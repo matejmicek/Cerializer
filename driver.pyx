@@ -13,7 +13,6 @@ import projekt
 FILENAME = b'ahoj'
 
 
-
 projekt.serialize_two_chars(FILENAME, 12, 12)
 result = projekt.deserialize_two_chars(FILENAME)
 print(result)
