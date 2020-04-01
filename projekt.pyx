@@ -1,14 +1,26 @@
-cpdef serialize(int a, char b):
-    serialized = open('serialized', 'wb')
-    cdef char n[4]
+from libc.stdio cimport fopen, fclose, FILE, EOF, fseek, SEEK_END, SEEK_SET, fwrite
+from libc.stdio cimport ftell, fgetc, fgets, getc, gets, feof, fread, getline
+from libc.string cimport strlen, memcpy, strcpy, strtok, strchr, strncpy
+import os
+
+
+
+cpdef serialize_two_chars(int a, char b):
+    # serialization
+    cdef char n[2]
+    cdef FILE *serialized
+    serialized = fopen('ahoj', 'wb')
     n[0] = a
     n[1] = b
-    serialized.write(n)
-    serialized.close()
+    fwrite(n, 1, 2, serialized)
+    fclose(serialized)
 
-    input_file = open('serialized', 'rb')
-    cdef char p[4]
-    print(input_file.read(1))
 
-    print(p[0])
-    print(p[1])
+
+cpdef deserialize_two_chars():
+    # deserialization
+    cdef FILE *fp
+    fp = fopen('ahoj', 'rb')
+    cdef char p[2]
+    fread(p, 1, 2, fp)
+    print(p[0], p[1])
