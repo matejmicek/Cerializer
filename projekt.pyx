@@ -36,16 +36,16 @@ cpdef tuple[int] deserialize_two_chars(char filename[]):
     return chars[0], chars[1]
 
 
-cpdef void write_string(buffer, s):
+cpdef void write_str(buffer, s):
     cdef char* byte_string
     encoded_string = s.encode('utf-8')
     byte_string = <bytes>encoded_string
     length = strlen(byte_string)
-    write_int(buffer, length)
+    write_long(buffer, length)
     buffer += byte_string
 
 
-cpdef str read_string(buffer):
+cpdef str read_str(buffer):
     cdef long64 string_length = read_long(buffer)
     a = read_buffer(buffer, string_length)
     return a.decode('utf-8')
@@ -62,7 +62,7 @@ cpdef bytes read_buffer(buffer, n):
 
 
 
-cdef long64 read_long(bytearray buffer):
+cpdef long64 read_long(bytearray buffer):
     """int and long values are written using variable-length, zig-zag
     coding."""
     cdef ulong64 b
@@ -83,7 +83,8 @@ cdef long64 read_long(bytearray buffer):
     return (n >> 1) ^ -(n & 1)
 
 
-cdef inline write_int(bytearray buffer, datum):
+
+cpdef inline write_long(bytearray buffer, datum):
     cdef ulong64 n
     cdef unsigned char ch_temp[1]
     n = (datum << 1) ^ (datum >> 63)
@@ -96,10 +97,8 @@ cdef inline write_int(bytearray buffer, datum):
 
 
 
-schema = {
-    'name': 'string',
-    'age': 'int'
-}
+cpdef write_int(bytearray buffer, datum):
+    write_long(buffer, datum)
 
 
 
@@ -110,10 +109,10 @@ def serialize_to_file(char *filename, data, schema):
     cdef bytearray buffer = bytearray()
 
     for k, _type in schema.items():
-        if _type == 'string':
-            write_string(buffer, data[k])
-        elif _type == 'int':
-            write_int(buffer, data[k])
+        if _type == 'str':
+            write_str(buffer, data[k])
+        elif _type == 'long':
+            write_long(buffer, data[k])
 
     writing_length = len(buffer)
     cdef char *pr = buffer
@@ -121,7 +120,7 @@ def serialize_to_file(char *filename, data, schema):
     fclose(serialized)
 
 
-def deserialize_from_file(char *filename, data, schema):
+def deserialize_from_file(char *filename, schema):
     cdef long file_length
     serialized = fopen(filename, 'rb')
     fseek(serialized, 0, SEEK_END)
@@ -135,9 +134,13 @@ def deserialize_from_file(char *filename, data, schema):
     cdef read_buffer = bytearray()
     read_buffer.extend(read_bytes) # TODO NEEDS TO BE FIXED
 
-    output = dict()
+    data = dict()
     for k, _type in schema.items():
-        if _type == 'string':
-            output[k] = read_string(read_buffer)
-        elif _type == 'int':
-            output[k] = read_long(read_buffer)
+        if _type == 'str':
+            data[k] = read_str(read_buffer)
+        elif _type == 'long':
+            data[k] = read_long(read_buffer)
+    return data
+
+
+

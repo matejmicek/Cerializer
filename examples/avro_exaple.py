@@ -4,7 +4,7 @@ import avro.io
 
 
 
-schema = avro.schema.parse(open('schemata/user_schema.avsc', 'rb').read())
+schema = avro.schema.parse(open('../schemata/user_schema.avsc', 'rb').read())
 
 writer = avro.datafile.DataFileWriter(open('result', 'wb'), avro.io.DatumWriter(), schema)
 writer.append({'name': 'Alyssa', 'favorite_number': 256})
