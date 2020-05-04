@@ -1,0 +1,21 @@
+name: ActiveWatchdog:1
+doc: Metadata of the execution signal specific to the Active Watchdog strategy.
+namespace: messaging
+type: record
+fields:
+
+  - name: imbalance
+    description: Imbalance of the broker at the time of the detected change
+    type: "common.Decimal:1"
+
+  - name: error
+    description: Error of the linear regression
+    type: "common.Decimal:1"
+
+  - name: price
+    description: Last detected price
+    type: "common.Price:1"
+
+  - name: cumulative_profit
+    description: Estimated profit
+    type: ['null', "common.Price:1"]
