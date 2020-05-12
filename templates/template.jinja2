@@ -1,11 +1,11 @@
-import write
+cimport write
 from libc.stdio cimport fopen, fclose, fseek, SEEK_END, rewind, ftell, fread, FILE, fwrite
 from libc.stdlib cimport malloc
 
 
 ctypedef long long long64
 ctypedef unsigned long long ulong64
-'''
+{#
 cpdef deserialize(filename):
     cdef long file_length
     serialized = fopen(filename, 'rb')
@@ -21,7 +21,7 @@ cpdef deserialize(filename):
     read_buffer.extend(read_bytes)
 
     return {
-    {%- for key, value in schema.items() recursive %}
+    {%- for key, value in schemata.items() recursive %}
     {%- if value is mapping %}
     {%  for _ in range(loop.depth) %}   {% endfor %}'{{ key }}' : { {{ loop(value.items())}}
     {%  for _ in range(loop.depth) %}   {% endfor %}},
@@ -29,12 +29,8 @@ cpdef deserialize(filename):
     {%  for _ in range(loop.depth) %}   {% endfor %}'{{ key }}' : {{ get_deserialization_function(value) }},
     {%- endif %}
     {%- endfor %}}
-
-
-'''
-cpdef serialize(data, file_output):
+#}
+cpdef serialize(data, output):
     cdef bytearray buffer = bytearray()
-
-{{ dict_serialization(schema, 'buffer', 'write')|indent(4, True) }}
-
-    file_output.write(buffer)
+{{ serialization_code(schema, 'data', 'buffer')|indent(4, True) }}
+    output.write(buffer)

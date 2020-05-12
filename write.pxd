@@ -17,12 +17,12 @@ cdef union double_ulong64:
 
 
 
-cpdef inline write_null(object fo, datum):
+cdef inline write_null(object fo):
     """null is written as zero bytes"""
     pass
 
 
-cpdef inline write_boolean(bytearray fo, bint datum):
+cdef inline write_boolean(bytearray fo, bint datum):
     """A boolean is written as a single byte whose value is either 0 (false) or
     1 (true)."""
     cdef unsigned char ch_temp[1]
@@ -30,7 +30,7 @@ cpdef inline write_boolean(bytearray fo, bint datum):
     fo += ch_temp[:1]
 
 
-cpdef inline write_int(bytearray fo, datum):
+cdef inline write_int(bytearray fo, datum):
     """int and long values are written using variable-length, zig-zag coding.
     """
     cdef ulong64 n
@@ -44,7 +44,7 @@ cpdef inline write_int(bytearray fo, datum):
     fo += ch_temp[:1]
 
 
-cpdef inline write_long(bytearray fo, datum):
+cdef inline write_long(bytearray fo, datum):
     write_int(fo, datum)
 
 
@@ -53,7 +53,7 @@ cdef union float_uint32:
     uint32 n
 
 
-cpdef inline write_float(bytearray fo, float datum):
+cdef inline write_float(bytearray fo, float datum):
     """A float is written as 4 bytes.  The float is converted into a 32-bit
     integer using a method equivalent to Java's floatToIntBits and then encoded
     in little-endian format."""
@@ -70,7 +70,7 @@ cpdef inline write_float(bytearray fo, float datum):
 
 
 
-cpdef inline write_double(bytearray fo, double datum, schema=None):
+cdef inline write_double(bytearray fo, double datum, schema=None):
     """A double is written as 8 bytes.  The double is converted into a 64-bit
     integer using a method equivalent to Java's doubleToLongBits and then
     encoded in little-endian format.  """
@@ -90,26 +90,26 @@ cpdef inline write_double(bytearray fo, double datum, schema=None):
     fo += ch_temp[:8]
 
 
-cpdef inline write_bytes(bytearray fo, bytes datum, schema=None):
+cdef inline write_bytes(bytearray fo, bytes datum, schema=None):
     """Bytes are encoded as a long followed by that many bytes of data."""
     write_long(fo, len(datum))
     fo += datum
 
 
-cpdef inline write_string(bytearray fo, datum, schema=None):
+cdef inline write_string(bytearray fo, datum, schema=None):
     """A string is encoded as a long followed by that many bytes of UTF-8
     encoded character data."""
     write_bytes(fo, bytes(datum, 'UTF-8'))
 
 
 
-cpdef inline write_fixed(bytearray fo, object datum, schema=None):
+cdef inline write_fixed(bytearray fo, object datum, schema=None):
     """Fixed instances are encoded using the number of bytes declared in the
     schema."""
     fo += datum
 
 
-cpdef inline write_enum(bytearray fo, datum, schema):
+cdef inline write_enum(bytearray fo, datum, schema):
     """An enum is encoded by a int, representing the zero-based position of
     the symbol in the schema."""
     index = schema['symbols'].index(datum)
