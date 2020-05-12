@@ -1,0 +1,17 @@
+name: array_schema
+doc: Single order
+namespace: messaging
+type: record
+fields:
+
+
+- name: order_id
+  doc: 'Id of order'
+  type: string
+
+- name: round_trip_trade_ids
+  doc: 'Id of orders executed as one sequence'
+  type:
+    type: array
+    items:
+      type: string

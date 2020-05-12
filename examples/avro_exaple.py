@@ -1,13 +1,14 @@
+from constants.data_constants import *
 import avro.schema
 import avro.datafile
 import avro.io
 import pprint
+import io
 
+schema = avro.schema.parse(open('../schemata/messaging/user_schema/1/user_schema.avsc', 'rb').read())
 
-schema = avro.schema.parse(open('../schemata/user_schema.avsc', 'rb').read())
-
-writer = avro.datafile.DataFileWriter(open('result', 'wb'), avro.io.DatumWriter(), schema)
-writer.append({'name': 'matej'})
+writer = avro.datafile.DataFileWriter(io.BytesIO(), avro.io.DatumWriter(), schema)
+writer.append(DATA_USER)
 
 writer.close()
 

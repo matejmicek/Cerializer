@@ -1,4 +1,4 @@
-name: ActiveWatchdog:1
+name: union_schema
 doc: Metadata of the execution signal specific to the Active Watchdog strategy.
 namespace: messaging
 type: record
@@ -6,16 +6,12 @@ fields:
 
   - name: imbalance
     description: Imbalance of the broker at the time of the detected change
-    type: "common.Decimal:1"
-
+    type: "string"
+  
   - name: error
     description: Error of the linear regression
-    type: "common.Decimal:1"
+    type: "string"
 
   - name: price
     description: Last detected price
-    type: "common.Price:1"
-
-  - name: cumulative_profit
-    description: Estimated profit
-    type: ['null', "common.Price:1"]
+    type: "string"

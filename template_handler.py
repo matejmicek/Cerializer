@@ -1,6 +1,8 @@
 import jinja2
 import schema_parser
 import pprint
+import os
+import pprint
 
 
 
@@ -33,12 +35,12 @@ def dict_serialization_generator(dictionary, prefix, buffer_name, relative_direc
 
 
 
-def render_schema(rendered_filename, schema):
+def render_schemata(rendered_filename, schema):
     env = jinja2.Environment(
-        loader = jinja2.PackageLoader('serializer', 'templates')
+        loader = jinja2.PackageLoader('cerializer', 'templates')
     )
     env.globals['get_deserialization_function'] = get_deserialization_function
-    env.globals['dict_serialization'] = dict_serialization
+    env.globals['serialization_code'] = schema_parser.generate_serialization_code
 
     template = env.get_template('template.jinja2')
     rendered_template = template.render(schema = schema)
@@ -48,9 +50,16 @@ def render_schema(rendered_filename, schema):
 
 
 def update_schemata():
-    schema = schema_parser.parse_schema_from_file('schemata/array_schema.avsc')
-    result = schema_parser.generate_serialization_code(schema, 'DATAAAA', 'BUFFFEEEER')
-    pprint.pprint(result)
-
+    schema_roots = ['schemata']
+    for schema_root in schema_roots:
+        schema_root = os.fsencode(schema_root)
+        for namespace in os.listdir(schema_root):
+            for schema_name in os.listdir(os.path.join(schema_root, namespace)):
+                for version in os.listdir(os.path.join(schema_root, namespace, schema_name)):
+                    schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
+                    filename = f'{schema_name.decode()}_{version.decode()}.pyx'
+                    code_path = os.path.join('cerializer_base', filename)
+                    schema = schema_parser.parse_schema_from_file(schema_path.decode())
+                    render_schemata(code_path, schema = schema)
 
 update_schemata()

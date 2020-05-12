@@ -1,0 +1,15 @@
+name: BookExposure
+doc: Current exposure for this book
+namespace: messaging
+type: record
+fields:
+
+- name: event_type
+  doc: 'Defines what type of event lead to exposure change'
+  type:
+    type: enum
+    name: EventType
+    symbols:
+      - FAIR_PRICE_CHANGE
+      - POSITION_CHANGE
+      - SNAPSHOT
