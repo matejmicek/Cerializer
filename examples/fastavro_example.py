@@ -1,34 +1,12 @@
 import fastavro
+import avro.schema
 
 
 
-schema = {
-	'type': 'record',
-	'name': 'User',
-	'namespace': 'example.avro',
-	'fields': [
-		{
-			'type': 'string',
-			'name': 'name'
-		},
-		{
-			'type': [
-				'int',
-				'null'
-			],
-			'name': 'favorite_number'
-		},
-		{
-			'type': [
-				'string',
-				'null'
-			],
-			'name': 'favorite_color'
-		}
-	]
-}
-
+schema = avro.schema.parse(open('../schemata/user_schema.avsc', 'rb').read()).to_json()
+print(schema)
 parsed_schema = fastavro.parse_schema(schema)
+
 
 records = [
 	{u'name': u'matej', u'favorite_number': None, u'favorite_color': 'yellow'},

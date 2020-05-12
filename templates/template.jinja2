@@ -1,11 +1,11 @@
-import projekt
+import write
 from libc.stdio cimport fopen, fclose, fseek, SEEK_END, rewind, ftell, fread, FILE, fwrite
 from libc.stdlib cimport malloc
 
 
 ctypedef long long long64
 ctypedef unsigned long long ulong64
-
+'''
 cpdef deserialize(filename):
     cdef long file_length
     serialized = fopen(filename, 'rb')
@@ -31,16 +31,10 @@ cpdef deserialize(filename):
     {%- endfor %}}
 
 
-
-cpdef serialize(data, filename):
-    cdef FILE *serialized
-    serialized = fopen(filename, 'wb')
-    cdef long64 length
+'''
+cpdef serialize(data, file_output):
     cdef bytearray buffer = bytearray()
 
-{{ dict_serialization(schema, 'buffer', 'projekt')|indent(4, True) }}
+{{ dict_serialization(schema, 'buffer', 'write')|indent(4, True) }}
 
-    writing_length = len(buffer)
-    cdef char *pr = buffer
-    fwrite(pr, writing_length, 1, serialized)
-    fclose(serialized)
+    file_output.write(buffer)
