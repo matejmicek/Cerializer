@@ -13,10 +13,27 @@ from types import MappingProxyType
 COMPLEX_TYPES = {'record', 'enum'}
 NULL_TYPE = 'null'
 
+
+
+def correct_type(type_: str):
+	if type_ == 'string':
+		return 'str'
+	if type_ == 'boolean':
+		return 'bool'
+	if type_ == 'long':
+		# TODO since python 3.4 there is only int, but do we distinguish????
+		return 'int'
+	if type_ == 'double':
+		# TODO float is already double precision - fix for a compile error
+		return 'float'
+	return type_
+
+
 def get_serialization_function(type_: str, location, buffer_name: str):
 	if type_ == 'null':
 		return f'write.write_null({buffer_name})'
 	return f'write.write_{type_}({buffer_name}, {location})'
+
 
 
 def get_union_index_function(index: int, buffer_name: str):
@@ -39,11 +56,50 @@ def get_enum_serialization(schema, location, buffer_name):
 	return f'write.write_int({buffer_name}, {symbols}.index({location}))'
 
 
+def get_union_serialization(schema, location, buffer_name, jinja_env):
+	name = schema['name']
+	type_ = schema['type']
+	new_location = f'{location}[\'{name}\']'
+	possible_types_and_code = []
+	# we need to ensure that null is checked first
+	if 'null' in type_:
+		possible_types_and_code.append(
+			(
+				'null',
+				get_union_index_function(type_.index('null'), buffer_name),
+				get_serialization_function('null', new_location, buffer_name)
+			)
+		)
+	for possible_type in type_:
+		if possible_type == 'null':
+			continue
+		possible_types_and_code.append(
+			(
+				possible_type,
+				get_union_index_function(type_.index(possible_type), buffer_name),
+				get_serialization_function(possible_type, new_location, buffer_name)
+			)
+		)
+	template = jinja_env.get_template('union.jinja2')
+	return template.render(types = possible_types_and_code, location = location, name = name)
+
+
+
+def get_map_serialization(schema, location, buffer_name, env):
+	template = env.get_template('map.jinja2')
+	return template.render(
+		location = location,
+		buffer_name = buffer_name,
+		schema = schema,
+		generate_serialization_code = generate_serialization_code
+	)
+
 
 def generate_serialization_code(schema, location, buffer_name: str):
 	jinja_env = jinja2.Environment(
 		loader = jinja2.PackageLoader('cerializer', 'templates')
 	)
+	jinja_env.globals['correct_type'] = correct_type
 	if type(schema) is str:
 		return get_serialization_function(schema, location, buffer_name)
 	type_ = schema['type']
@@ -54,37 +110,15 @@ def generate_serialization_code(schema, location, buffer_name: str):
 	elif type_ == ENUM:
 		return get_enum_serialization(schema, location, buffer_name)
 	elif type_ == MAP:
-		pass
+		return get_map_serialization(schema, location, buffer_name, jinja_env)
 	elif type_ == FIXED:
-		pass
+		return get_serialization_function(type_, location, buffer_name)
 	elif type(type_) is dict:
 		name = schema['name']
 		new_location = f'{location}[\'{name}\']'
 		return generate_serialization_code(type_, new_location, buffer_name)
 	elif type(type_) is list:
-		name = schema['name']
-		new_location = f'{location}[\'{name}\']'
-		possible_types_and_code = []
-		# we need to ensure that null is checked first
-		if 'null' in type_:
-			possible_types_and_code.append(
-				(
-					'null',
-					get_union_index_function(type_.index('null'), buffer_name),
-					get_serialization_function('null', new_location, buffer_name)
-				)
-			)
-		for possible_type in type_:
-			if possible_type == 'null': continue
-			possible_types_and_code.append(
-				(
-					possible_type,
-					get_union_index_function(type_.index(possible_type), buffer_name),
-					get_serialization_function(possible_type, new_location, buffer_name)
-				)
-			)
-		template = jinja_env.get_template('union.jinja2')
-		return template.render(types = possible_types_and_code, location = location, name = name)
+		return get_union_serialization(schema, location, buffer_name, jinja_env)
 
 	# TODO needs to be fixed
 	elif type(type_) is type(MappingProxyType({'a':'b'})):

@@ -4,7 +4,7 @@ import timeit
 import schema_parser
 import avro.schema
 import yaml
-
+import texttable as tt
 
 
 
@@ -17,6 +17,8 @@ import io
 import json
 import yaml
 import cerializer_base.{schema_name + '_' + str(schema_version)} as c
+# fixes a Timeit NameError 'mappingproxy'
+from types import MappingProxyType as mappingproxy
 
 schema_favro = {schema_favro}
 schema_serializer = {schema_cerializer}
@@ -36,21 +38,30 @@ output = io.BytesIO()
 		setup = setup
 	).timeit(number = count)
 
-	score_json_serialize = timeit.Timer(
-		stmt = 'json.dumps(data)',
-		setup = setup
-	).timeit(number = count)
+	if 'fixed' not in schema_name:
+		score_json_serialize = timeit.Timer(
+			stmt = 'json.dumps(data)',
+			setup = setup
+		).timeit(number = count)
+	else:
+		score_json_serialize = 100000
 
 	return (score_cerializer_serialize, score_fastavro_serialize, score_json_serialize)
 
 
-for schema, version in [
+schemata = [
 	('array_schema', 1),
 	('union_schema', 1),
 	('BBGStockInfo', 2),
 	('enum_schema', 1),
 	('string_schema', 1),
-]:
+	('map_schema', 1),
+	('fixed_schema', 1),
+]
+
+results = []
+
+for schema, version in schemata:
 	SCHEMA_FILE = f'/home/matejmicek/work/Cerializer/schemata/messaging/{schema}/{version}/schema.yaml'
 	SCHEMA_CERIALIZER = schema_parser.parse_schema_from_file(SCHEMA_FILE)
 	SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
@@ -63,9 +74,19 @@ for schema, version in [
 		schema_version = version
 	)
 
-	print('-----------------------------------------------------------------------')
-	print(f'Benchmark for schema {schema}')
-	print('-----------------------------------------------------------------------')
-	print(result)
-	print(f'Cerializer is {result[1]/result[0]}x faster than Fastavro')
-	print(f'Cerializer is {result[2]/result[0]}x faster than Json')
+	results.append((result[1]/result[0], result[2]/result[0]))
+
+
+names = [f'{schema[0]}:{str(schema[1])}' for schema in schemata]
+
+
+table = tt.Texttable()
+table.header(['schema', 'FastAvro [x faster]', 'Json [x faster]'])
+fast_avro_score = [res[0] for res in results]
+json_score = [res[1] for res in results]
+
+
+for row in zip(names, fast_avro_score, json_score):
+	table.add_row(row)
+
+print(table.draw())

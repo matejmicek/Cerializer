@@ -5,31 +5,7 @@ from libc.stdlib cimport malloc
 
 ctypedef long long long64
 ctypedef unsigned long long ulong64
-{#
-cpdef deserialize(filename):
-    cdef long file_length
-    serialized = fopen(filename, 'rb')
-    fseek(serialized, 0, SEEK_END)
-    file_length = ftell(serialized)
-    rewind(serialized)
 
-    cdef char *read_bytes = {{ '<char *>' }} malloc(file_length)
-    fread(read_bytes, 1, file_length, serialized)
-    fclose(serialized)
-
-    cdef read_buffer = bytearray()
-    read_buffer.extend(read_bytes)
-
-    return {
-    {%- for key, value in schemata.items() recursive %}
-    {%- if value is mapping %}
-    {%  for _ in range(loop.depth) %}   {% endfor %}'{{ key }}' : { {{ loop(value.items())}}
-    {%  for _ in range(loop.depth) %}   {% endfor %}},
-    {% else %}
-    {%  for _ in range(loop.depth) %}   {% endfor %}'{{ key }}' : {{ get_deserialization_function(value) }},
-    {%- endif %}
-    {%- endfor %}}
-#}
 cpdef serialize(data, output):
     cdef bytearray buffer = bytearray()
 {{ serialization_code(schema, 'data', 'buffer')|indent(4, True) }}

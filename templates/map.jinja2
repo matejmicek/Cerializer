@@ -1,0 +1,27 @@
+cdef dict d_datum
+datum = {{ location }}
+try:
+    d_datum = <dict?>(datum)
+except TypeError:
+    if len(datum) > 0:
+        write.write_long({{ buffer_name }}, len(datum))
+        for key, val in datum.items():
+            write.write_string({{ buffer_name }}, key)
+            {% for t in schema['values'] %}
+            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} key not in {{ location }}{% else %} type({{ location }}[key]) is {{ correct_type(t) }}{% endif %}:
+                write.write_long({{ buffer_name }}, {{ loop.index0 }})
+                {{ generate_serialization_code(t, 'val', buffer_name)|indent(16) }}
+            {% endfor %}
+    write.write_long({{ buffer_name }}, 0)
+else:
+    # Faster, special-purpose code where datum is a Python dict.
+    if len(d_datum) > 0:
+        write.write_long({{ buffer_name }}, len(d_datum))
+        for key, val in d_datum.items():
+            write.write_string({{ buffer_name }}, key)
+            {% for t in schema['values'] %}
+            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} key not in {{ location }}{% else %} type({{ location }}[key]) is {{ correct_type(t) }}{% endif %}:
+                write.write_long({{ buffer_name }}, {{ loop.index0 }})
+                {{ generate_serialization_code(t, 'val', buffer_name)|indent(16) }}
+            {% endfor %}
+    write.write_long({{ buffer_name }}, 0)
