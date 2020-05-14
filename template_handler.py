@@ -10,10 +10,6 @@ RENDERING_FILENAME = 'serializer.pyx'
 
 
 
-def get_deserialization_function(_type):
-    return f'projekt.read_{_type}(read_buffer)'
-
-
 
 def dict_serialization(dictionary, buffer_name, relative_directory):
     return '\n'.join(dict_serialization_generator(
@@ -35,11 +31,10 @@ def dict_serialization_generator(dictionary, prefix, buffer_name, relative_direc
 
 
 
-def render_schemata(rendered_filename, schema):
+def render_schema(rendered_filename, schema):
     env = jinja2.Environment(
         loader = jinja2.PackageLoader('cerializer', 'templates')
     )
-    env.globals['get_deserialization_function'] = get_deserialization_function
     env.globals['serialization_code'] = schema_parser.generate_serialization_code
 
     template = env.get_template('template.jinja2')
@@ -60,6 +55,6 @@ def update_schemata():
                     filename = f'{schema_name.decode()}_{version.decode()}.pyx'
                     code_path = os.path.join('cerializer_base', filename)
                     schema = schema_parser.parse_schema_from_file(schema_path.decode())
-                    render_schemata(code_path, schema = schema)
+                    render_schema(code_path, schema = schema)
 
 update_schemata()

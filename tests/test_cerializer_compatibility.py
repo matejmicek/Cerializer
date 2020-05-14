@@ -15,6 +15,8 @@ from importlib import import_module
 		('../schemata/messaging/BBGStockInfo/2/', 'BBGStockInfo', 2),
 		('../schemata/messaging/string_schema/1/', 'string_schema', 1),
 		('../schemata/messaging/enum_schema/1/', 'enum_schema', 1),
+		('../schemata/messaging/map_schema/1/', 'map_schema', 1),
+		('../schemata/messaging/fixed_schema/1/', 'fixed_schema', 1),
 	]
 )
 def test_array_serialization_compatibility(path, schema_name, schema_version):
@@ -27,6 +29,6 @@ def test_array_serialization_compatibility(path, schema_name, schema_version):
 	c = import_module(f'cerializer_base.{schema_name}_{schema_version}')
 	output_cerializer = io.BytesIO()
 	c.serialize(data, output_cerializer)
-
+	assert output_cerializer.getvalue() != io.BytesIO().getvalue()
 	assert output_cerializer.getvalue() == output_fastavro.getvalue()
 
