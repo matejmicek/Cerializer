@@ -1,7 +1,5 @@
 import io
 import fastavro
-from constants.data_constants import *
-import cerializer
 import pytest
 import yaml
 from importlib import import_module
@@ -23,13 +21,10 @@ from importlib import import_module
 def test_array_serialization_compatibility(path, schema_name, schema_version):
 	data = yaml.safe_load(open(path + 'example.yaml'))
 	SCHEMA_FAVRO = yaml.load(open(path + 'schema.yaml'), Loader = yaml.Loader)
-	output_fastavro = io.BytesIO()
+	output_fastavro = io.BytesIO() 
 	fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
-
-
-	c = import_module(f'cerializer_base.{schema_name}_{schema_version}')
+	c = import_module(f'cerializer_base.{schema_name}_{schema_version}', package = 'cerializer')
 	output_cerializer = io.BytesIO()
 	c.serialize(data, output_cerializer)
 	assert output_cerializer.getvalue() != io.BytesIO().getvalue()
 	assert output_cerializer.getvalue() == output_fastavro.getvalue()
-
