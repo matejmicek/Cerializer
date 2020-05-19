@@ -15,6 +15,7 @@ from importlib import import_module
 		('../schemata/messaging/enum_schema/1/', 'enum_schema', 1),
 		('../schemata/messaging/map_schema/1/', 'map_schema', 1),
 		('../schemata/messaging/fixed_schema/1/', 'fixed_schema', 1),
+		('../schemata/messaging/timestamp_schema/1/', 'timestamp_schema', 1),
 	]
 )
 def test_array_serialization_compatibility(path, schema_name, schema_version):

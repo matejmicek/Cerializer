@@ -15,6 +15,10 @@ NULL_TYPE = 'null'
 
 
 
+def prepare(logical_type, data_type, buffer_name, location):
+	if logical_type == 'timestamp_millis' and data_type == 'long':
+		return f'write.write_{data_type}({buffer_name}, prepare.prepare_{logical_type}({location}))'
+
 def correct_type(type_: str):
 	if type_ == 'string':
 		return 'str'
@@ -125,6 +129,9 @@ def generate_serialization_code(schema, location, buffer_name: str):
 		name = schema['name']
 		new_location = f'{location}[\'{name}\']'
 		return generate_serialization_code(dict(type_), new_location, buffer_name)
+
+	elif 'logicalType' in schema:
+		return prepare(schema['logicalType'].replace('-', '_'), type_, buffer_name, location)
 
 	elif type_ in BASIC_TYPES:
 		name = schema['name']
