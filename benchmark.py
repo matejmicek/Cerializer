@@ -62,14 +62,14 @@ schemata = [
 results = []
 
 for schema, version in schemata:
-	SCHEMA_FILE = f'/home/matejmicek/work/Cerializer/schemata/messaging/{schema}/{version}/schema.yaml'
+	SCHEMA_FILE = f'/Users/matejmicek/PycharmProjects/Cerializer/schemata/messaging/{schema}/{version}/schema.yaml'
 	SCHEMA_CERIALIZER = schema_parser.parse_schema_from_file(SCHEMA_FILE)
 	SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
 	result = benchmark(
 		schema_cerializer = SCHEMA_CERIALIZER,
-		path_cerializer = f'/home/matejmicek/work/Cerializer/schemata/messaging/{schema}/{version}/',
+		path_cerializer = f'/Users/matejmicek/PycharmProjects/Cerializer/schemata/messaging/{schema}/{version}/',
 		schema_favro = SCHEMA_FAVRO,
-		count = 100000,
+		count = 10000,
 		schema_name = schema,
 		schema_version = version
 	)
