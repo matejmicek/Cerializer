@@ -15,9 +15,15 @@ NULL_TYPE = 'null'
 
 
 
-def prepare(logical_type, data_type, buffer_name, location):
-	if logical_type == 'timestamp_millis' and data_type == 'long':
-		return f'write.write_{data_type}({buffer_name}, prepare.prepare_{logical_type}({location}))'
+def prepare(logical_type, data_type, buffer_name, location, schema):
+	if logical_type == 'decimal':
+		params = {
+			'scale': schema.get('scale', 0),
+			'size': schema.get('size', 0)
+		}
+		return f'write.write_{data_type}({buffer_name}, prepare.prepare_{data_type}_{logical_type}({location}, {params}))'
+	return f'write.write_{data_type}({buffer_name}, prepare.prepare_{logical_type}({location}))'
+
 
 def correct_type(type_: str):
 	if type_ == 'string':
@@ -106,8 +112,13 @@ def generate_serialization_code(schema, location, buffer_name: str):
 	jinja_env.globals['correct_type'] = correct_type
 	if type(schema) is str:
 		return get_serialization_function(schema, location, buffer_name)
+
 	type_ = schema['type']
-	if type_ == RECORD:
+
+	if f'logicalType' in schema:
+		x = prepare(schema['logicalType'].replace('-', '_'), type_, buffer_name, location, schema)
+		return x
+	elif type_ == RECORD:
 		return '\n'.join((generate_serialization_code(field, location, buffer_name)) for field in schema['fields'])
 	elif type_ == ARRAY:
 		return get_array_serialization(schema, location, buffer_name, jinja_env)
@@ -129,9 +140,6 @@ def generate_serialization_code(schema, location, buffer_name: str):
 		name = schema['name']
 		new_location = f'{location}[\'{name}\']'
 		return generate_serialization_code(dict(type_), new_location, buffer_name)
-
-	elif 'logicalType' in schema:
-		return prepare(schema['logicalType'].replace('-', '_'), type_, buffer_name, location)
 
 	elif type_ in BASIC_TYPES:
 		name = schema['name']

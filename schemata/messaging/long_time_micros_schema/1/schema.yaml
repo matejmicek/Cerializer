@@ -1,0 +1,11 @@
+name: long_time_micros_schema
+doc: Metadata of the execution signal specific to the Active Watchdog strategy.
+namespace: messaging
+type: record
+fields:
+
+  - name: date
+    description: Estimated profit
+    type:
+      type: "long"
+      logicalType: "time-micros"

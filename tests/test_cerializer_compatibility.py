@@ -5,21 +5,30 @@ import yaml
 from importlib import import_module
 
 
+
 @pytest.mark.parametrize(
-	'path,schema_name,schema_version',
+	'schema_name,schema_version',
 	[
-		('../schemata/messaging/array_schema/1/', 'array_schema', 1),
-		('../schemata/messaging/union_schema/1/', 'union_schema', 1),
-		('../schemata/messaging/BBGStockInfo/2/', 'BBGStockInfo', 2),
-		('../schemata/messaging/string_schema/1/', 'string_schema', 1),
-		('../schemata/messaging/enum_schema/1/', 'enum_schema', 1),
-		('../schemata/messaging/map_schema/1/', 'map_schema', 1),
-		('../schemata/messaging/fixed_schema/1/', 'fixed_schema', 1),
-		('../schemata/messaging/timestamp_schema/1/', 'timestamp_schema', 1),
+		('array_schema', 1),
+		('union_schema', 1),
+		('BBGStockInfo', 2),
+		('string_schema', 1),
+		('enum_schema', 1),
+		('map_schema', 1),
+		('fixed_schema', 1),
+		('timestamp_schema', 1),
+		('timestamp_schema_micros', 1),
+		('fixed_decimal_schema', 1),
+		('bytes_decimal_schema', 1),
+		('int_date_schema', 1),
+		('string_uuid_schema', 1),
+		('string_uuid_schema', 1),
+		('long_time_micros_schema', 1),
 	]
 )
-def test_array_serialization_compatibility(path, schema_name, schema_version):
-	data = yaml.safe_load(open(path + 'example.yaml'))
+def test_serialization_compatibility(schema_name, schema_version):
+	path = f'../schemata/messaging/{schema_name}/{schema_version}/'
+	data = yaml.unsafe_load(open(path + 'example.yaml'))
 	SCHEMA_FAVRO = yaml.load(open(path + 'schema.yaml'), Loader = yaml.Loader)
 	output_fastavro = io.BytesIO() 
 	fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
