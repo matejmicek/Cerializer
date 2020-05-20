@@ -1,0 +1,11 @@
+name: timestamp_schema
+doc: Metadata of the execution signal specific to the Active Watchdog strategy.
+namespace: messaging
+type: record
+fields:
+
+  - name: date
+    description: Estimated profit
+    type:
+      type: "long"
+      logicalType: "timestamp-micros"

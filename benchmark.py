@@ -8,6 +8,9 @@ import texttable as tt
 
 
 
+NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'decimal', 'date', 'uuid')
+
+
 def benchmark(schema_favro, path_cerializer, schema_cerializer, count, schema_name, schema_version):
 	setup = f'''
 import benchmark
@@ -22,29 +25,32 @@ from types import MappingProxyType as mappingproxy
 
 schema_favro = {schema_favro}
 schema_serializer = {schema_cerializer}
-data = yaml.safe_load(open('{path_cerializer}' + 'example.yaml'))
+data = yaml.unsafe_load(open('{path_cerializer}' + 'example.yaml'))
 parsed_schema = fastavro.parse_schema(schema_favro)
 output = io.BytesIO()
 	'''
 
 
-	score_fastavro_serialize = timeit.Timer(
+	score_fastavro_serialize = timeit.timeit(
 		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
-		setup = setup
-	).timeit(number = count)
+		setup = setup,
+		number = count
+	)
 
-	score_cerializer_serialize = timeit.Timer(
+	score_cerializer_serialize = timeit.timeit(
 		stmt = 'c.serialize(data, output)',
-		setup = setup
-	).timeit(number = count)
+		setup = setup,
+		number = count
+	)
 
-	if 'fixed' not in schema_name:
-		score_json_serialize = timeit.Timer(
+	if not any([i in schema_name for i in NOT_SUPPORTED_JSON]):
+		score_json_serialize = timeit.timeit(
 			stmt = 'json.dumps(data)',
-			setup = setup
-		).timeit(number = count)
+			setup = setup,
+			number = count
+		)
 	else:
-		score_json_serialize = 100000
+		score_json_serialize = 666*score_cerializer_serialize
 
 	return (score_cerializer_serialize, score_fastavro_serialize, score_json_serialize)
 
@@ -57,6 +63,12 @@ schemata = [
 	('string_schema', 1),
 	('map_schema', 1),
 	('fixed_schema', 1),
+	('timestamp_schema', 1),
+	('timestamp_schema_micros', 1),
+	('bytes_decimal_schema', 1),
+	('fixed_decimal_schema', 1),
+	('int_date_schema', 1),
+	('string_uuid_schema', 1),
 ]
 
 results = []
@@ -90,3 +102,5 @@ for row in zip(names, fast_avro_score, json_score):
 	table.add_row(row)
 
 print(table.draw())
+
+

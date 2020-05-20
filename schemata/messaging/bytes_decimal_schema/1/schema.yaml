@@ -1,0 +1,9 @@
+name: fixed_decimal
+doc: Metadata of the execution signal specific to the Active Watchdog strategy.
+namespace: messaging
+type: record
+fields:
+
+  - name: date
+    description: Estimated profit
+    type: {"type": "bytes", "name": "date", "logicalType": "decimal", "scale": 2}
