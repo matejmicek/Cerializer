@@ -1,5 +1,8 @@
+from constants.data_constants import *
+import fastavro
 import timeit
-from cerializer import schema_parser
+import schema_parser
+import avro.schema
 import yaml
 import texttable as tt
 

@@ -1,4 +1,8 @@
+from constants.data_constants import *
+import avro.schema
+import avro.datafile
 import avro.io
+import pprint
 import io
 
 schema = avro.schema.parse(open('../schemata/messaging/user_schema/1/user_schema.avsc', 'rb').read())

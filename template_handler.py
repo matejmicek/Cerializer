@@ -1,6 +1,12 @@
 import jinja2
+import schema_parser
+import pprint
 import os
-import cerializer.schema_parser
+import pprint
+
+
+
+RENDERING_FILENAME = 'serializer.pyx'
 
 
 
@@ -29,7 +35,7 @@ def render_schema(rendered_filename, schema):
     env = jinja2.Environment(
         loader = jinja2.PackageLoader('cerializer', 'templates')
     )
-    env.globals['serialization_code'] = cerializer.schema_parser.generate_serialization_code
+    env.globals['serialization_code'] = schema_parser.generate_serialization_code
 
     template = env.get_template('template.jinja2')
     rendered_template = template.render(schema = schema)
@@ -47,8 +53,8 @@ def update_schemata():
                 for version in os.listdir(os.path.join(schema_root, namespace, schema_name)):
                     schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
                     filename = f'{schema_name.decode()}_{version.decode()}.pyx'
-                    code_path = os.path.join('cerializer/cerializer_base', filename)
-                    schema = cerializer.schema_parser.parse_schema_from_file(schema_path.decode())
+                    code_path = os.path.join('cerializer_base', filename)
+                    schema = schema_parser.parse_schema_from_file(schema_path.decode())
                     render_schema(code_path, schema = schema)
 
 update_schemata()
