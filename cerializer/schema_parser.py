@@ -107,7 +107,7 @@ def get_map_serialization(schema, location, buffer_name, env):
 
 def generate_serialization_code(schema, location, buffer_name: str):
 	jinja_env = jinja2.Environment(
-		loader = jinja2.PackageLoader('cerializer', 'templates')
+		loader = jinja2.FileSystemLoader(searchpath = 'cerializer/templates')
 	)
 	jinja_env.globals['correct_type'] = correct_type
 	if type(schema) is str:

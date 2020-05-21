@@ -1,8 +1,4 @@
-from constants.data_constants import *
-import fastavro
 import timeit
-import schema_parser
-import avro.schema
 import yaml
 import texttable as tt
 
@@ -11,7 +7,7 @@ import texttable as tt
 NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'decimal', 'date', 'uuid')
 
 
-def benchmark(schema_favro, path_cerializer, schema_cerializer, count, schema_name, schema_version):
+def benchmark(schema_favro, path_cerializer, count, schema_name, schema_version):
 	setup = f'''
 import benchmark
 import fastavro
@@ -19,12 +15,11 @@ import json
 import io
 import json
 import yaml
-import cerializer_base.{schema_name + '_' + str(schema_version)} as c
+import cerializer.cerializer_base.{schema_name + '_' + str(schema_version)} as c
 # fixes a Timeit NameError 'mappingproxy'
 from types import MappingProxyType as mappingproxy
 
 schema_favro = {schema_favro}
-schema_serializer = {schema_cerializer}
 data = yaml.unsafe_load(open('{path_cerializer}' + 'example.yaml'))
 parsed_schema = fastavro.parse_schema(schema_favro)
 output = io.BytesIO()
@@ -74,12 +69,10 @@ schemata = [
 results = []
 
 for schema, version in schemata:
-	SCHEMA_FILE = f'/Users/matejmicek/PycharmProjects/Cerializer/schemata/messaging/{schema}/{version}/schema.yaml'
-	SCHEMA_CERIALIZER = schema_parser.parse_schema_from_file(SCHEMA_FILE)
+	SCHEMA_FILE = f'schemata/messaging/{schema}/{version}/schema.yaml'
 	SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
 	result = benchmark(
-		schema_cerializer = SCHEMA_CERIALIZER,
-		path_cerializer = f'/Users/matejmicek/PycharmProjects/Cerializer/schemata/messaging/{schema}/{version}/',
+		path_cerializer = f'schemata/messaging/{schema}/{version}/',
 		schema_favro = SCHEMA_FAVRO,
 		count = 10000,
 		schema_name = schema,
