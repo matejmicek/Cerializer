@@ -1,12 +1,9 @@
-from constants.constants import *
 import avro.schema
 import jinja2
-import os
 import yaml
 import json
-import pprint
 from types import MappingProxyType
-
+import cerializer.constants.constants
 
 
 
@@ -118,15 +115,15 @@ def generate_serialization_code(schema, location, buffer_name: str):
 	if f'logicalType' in schema:
 		x = prepare(schema['logicalType'].replace('-', '_'), type_, buffer_name, location, schema)
 		return x
-	elif type_ == RECORD:
+	elif type_ == cerializer.constants.constants.RECORD:
 		return '\n'.join((generate_serialization_code(field, location, buffer_name)) for field in schema['fields'])
-	elif type_ == ARRAY:
+	elif type_ == cerializer.constants.constants.ARRAY:
 		return get_array_serialization(schema, location, buffer_name, jinja_env)
-	elif type_ == ENUM:
+	elif type_ == cerializer.constants.constants.ENUM:
 		return get_enum_serialization(schema, location, buffer_name)
-	elif type_ == MAP:
+	elif type_ == cerializer.constants.constants.MAP:
 		return get_map_serialization(schema, location, buffer_name, jinja_env)
-	elif type_ == FIXED:
+	elif type_ == cerializer.constants.constants.FIXED:
 		return get_serialization_function(type_, location, buffer_name)
 	elif type(type_) is dict:
 		name = schema['name']
@@ -141,7 +138,7 @@ def generate_serialization_code(schema, location, buffer_name: str):
 		new_location = f'{location}[\'{name}\']'
 		return generate_serialization_code(dict(type_), new_location, buffer_name)
 
-	elif type_ in BASIC_TYPES:
+	elif type_ in cerializer.constants.constants.BASIC_TYPES:
 		name = schema['name']
 		new_location = f'{location}[\'{name}\']'
 		return get_serialization_function(type_, new_location, buffer_name)
