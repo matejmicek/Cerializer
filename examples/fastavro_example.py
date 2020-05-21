@@ -3,7 +3,7 @@ import avro.schema
 
 
 
-schema = avro.schema.parse(open('../schemata/messaging/user_schema/1/user_schema.avsc', 'rb').read()).to_json()
+schema = avro.schema.parse(open('../cerializer/tests/schemata/messaging/user_schema/1/user_schema.avsc', 'rb').read()).to_json()
 print(schema)
 parsed_schema = fastavro.parse_schema(schema)
 

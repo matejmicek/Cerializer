@@ -5,7 +5,7 @@ import avro.io
 import pprint
 import io
 
-schema = avro.schema.parse(open('../schemata/messaging/user_schema/1/user_schema.avsc', 'rb').read())
+schema = avro.schema.parse(open('../cerializer/tests/schemata/messaging/user_schema/1/user_schema.avsc', 'rb').read())
 
 writer = avro.datafile.DataFileWriter(io.BytesIO(), avro.io.DatumWriter(), schema)
 writer.append(DATA_USER)
