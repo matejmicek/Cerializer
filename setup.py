@@ -8,7 +8,7 @@ setup(
     )
 )
 
-os.chdir('cerializer_base')
+os.chdir('cerializer/cerializer_base')
 
 
 setup(

@@ -1,4 +1,3 @@
-from constants.constants import *
 from libc.time cimport tm, mktime
 from cpython.int cimport PyInt_AS_LONG
 from cpython.tuple cimport PyTuple_GET_ITEM
