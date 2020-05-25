@@ -1,0 +1,2 @@
+book: 'my_new_book'
+event_type: 'CHANGE_IN_BOOKS'
