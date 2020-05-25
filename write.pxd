@@ -1,5 +1,4 @@
 #cython: language_level=3
-from typing import Dict
 from libc.stdio cimport fopen, fclose, FILE, EOF, fseek, SEEK_END, SEEK_SET, fwrite, fscanf, rewind, sscanf
 from libc.stdio cimport ftell, fgetc, fgets, getc, gets, feof, fread, getline, fprintf
 from libc.stdlib cimport malloc

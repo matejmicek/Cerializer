@@ -1,5 +1,0 @@
-{%  for type_, number_code, serialization_code in types %}
-{%  if loop.first %}if{%  else %}elif{% endif %}{% if type_ == 'null' %} '{{ name }}' not in {{ location }}{% else %} type({{ location }}['{{ name }}']) is {{ correct_type(type_) }}{% endif %}:
-    {{ number_code }}
-    {{ serialization_code }}
-{% endfor %}
