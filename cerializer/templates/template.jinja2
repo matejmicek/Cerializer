@@ -1,0 +1,13 @@
+#cython: language_level=3
+cimport write
+import {{ prepare_prefix }}prepare
+
+
+
+ctypedef long long long64
+ctypedef unsigned long long ulong64
+
+cpdef serialize(data, output):
+    cdef bytearray buffer = bytearray()
+{{ serialization_code(schema, 'data', 'buffer', env)|indent(4, True) }}
+    output.write(buffer)

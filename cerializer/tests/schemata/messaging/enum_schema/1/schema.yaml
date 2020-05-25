@@ -1,0 +1,13 @@
+name: Exposure
+namespace: messaging
+type: record
+fields:
+
+- name: event_type
+  type:
+    type: enum
+    name: EventType
+    symbols:
+      - CHANGE_IN_BOOKS
+      - CHANGE_IN_WHATEVER
+      - SNAPSHOT

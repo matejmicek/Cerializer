@@ -1,0 +1,8 @@
+name: fixed_decimal
+namespace: messaging
+type: record
+fields:
+
+  - name: date
+    description: Profit
+    type: {"type": "fixed", "size": 16, "name": "date", "logicalType": "decimal", "scale": 2}
