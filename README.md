@@ -10,8 +10,8 @@ Special credit needs to be given to [FastAvro](https://github.com/fastavro/fasta
 `[schemata_root_folder]/[namespace]/[schema_name]/[schema_version]/schema.yaml`<br>
 It is essential that you follow this pattern and safe your schemata in `schema.yaml` files.
 
-2. Run `schemata_handler.update_schemata` with a list of all your schemata root directories.<br>
-eg. `schemata_handler.update_schemata(['cerializer/tests/schemata'])`<br>
+2. Run `cerializer_handler.update_cerializer` with a list of all your schemata root directories.<br>
+eg. `cerializer_handler.update_cerializer(['cerializer/tests/schemata'])`<br>
 This will generate an importable module for each schema that contains two methods: `serialize` and `deserialize`.<br>
 This module can be then imported as:<br>
  `import [schema_name]_[schema_version]`<br>

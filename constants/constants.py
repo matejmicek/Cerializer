@@ -34,3 +34,20 @@ DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 WRITE_PREFIX = ''
 PREPARE_PREFIX = ''
 WRITE_LOCATION = ''
+
+SCHEMATA = [
+	('array_schema', 1),
+	('union_schema', 1),
+	('string_schema', 1),
+	('enum_schema', 1),
+	('map_schema', 1),
+	('fixed_schema', 1),
+	('timestamp_schema', 1),
+	('timestamp_schema_micros', 1),
+	('fixed_decimal_schema', 1),
+	('bytes_decimal_schema', 1),
+	('int_date_schema', 1),
+	('string_uuid_schema', 1),
+	('string_uuid_schema', 1),
+	('long_time_micros_schema', 1),
+]
