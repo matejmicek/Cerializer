@@ -1,3 +1,4 @@
+#cython: language_level=3
 from constants.constants import *
 from libc.time cimport tm, mktime
 from cpython.int cimport PyInt_AS_LONG
