@@ -7,7 +7,8 @@ import {{ prepare_prefix }}prepare
 ctypedef long long long64
 ctypedef unsigned long long ulong64
 
-cpdef serialize(data, output):
-    cdef bytearray buffer = bytearray()
-{{ serialization_code(schema, 'data', 'buffer', env)|indent(4, True) }}
-    output.write(buffer)
+cpdef serialize({{ location }}, output):
+    cdef bytearray {{ buffer_name }} = bytearray()
+{{ cdefs |indent(4, True)}}
+{{ serialization_code|indent(4, True) }}
+    output.write({{ buffer_name }})
