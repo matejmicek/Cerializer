@@ -18,7 +18,7 @@ def render_code_for_schema(rendered_filename, schema):
     Renders code for a given schema into a .pyx file.
     '''
     env = jinja2.Environment(
-        loader = jinja2.FileSystemLoader(searchpath = 'templates')
+        loader = jinja2.FileSystemLoader(searchpath = 'cerializer/templates')
     )
     env.globals['env'] = env
     location = 'data'
@@ -35,8 +35,7 @@ def render_code_for_schema(rendered_filename, schema):
         location = location,
         cdefs = cdefs,
         buffer_name = code_generator.buffer_name,
-        serialization_code = serialization_code,
-        prepare_prefix = constants.constants.PREPARE_PREFIX
+        serialization_code = serialization_code
     )
     output = open(rendered_filename, 'w')
     output.write(rendered_template)
@@ -47,7 +46,7 @@ def update_cerializer(schema_roots):
     '''
     Generates code for all schemata in all schema roots and then compiles it.
     '''
-    code_base_path = 'cerializer_base'
+    code_base_path = 'cerializer/cerializer_base'
     try:
         os.mkdir(os.path.join(code_base_path))
     except OSError:
@@ -62,7 +61,7 @@ def update_cerializer(schema_roots):
                     code_path = os.path.join(code_base_path, filename)
                     schema = cerializer.schema_parser.parse_schema_from_file(schema_path.decode())
                     render_code_for_schema(code_path, schema = schema)
-    os.system('python ../setup.py build_ext --inplace')
+    os.system(f'python setup.py build_ext --inplace')
 
 
-update_cerializer(['tests/schemata'])
+update_cerializer(['cerializer/tests/schemata'])
