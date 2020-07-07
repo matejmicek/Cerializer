@@ -26,8 +26,8 @@ class code_generator:
 				'scale': schema.get('scale', 0),
 				'size': schema.get('size', 0)
 			}
-			return f'{constants.constants.WRITE_PREFIX}write.write_{data_type}({self.buffer_name}, {constants.constants.PREPARE_PREFIX}prepare.prepare_{data_type}_{logical_type}({location}, {params}))'
-		return f'{constants.constants.WRITE_PREFIX}write.write_{data_type}({self.buffer_name}, {constants.constants.PREPARE_PREFIX}prepare.prepare_{logical_type}({location}))'
+			return f'write.write_{data_type}({self.buffer_name}, prepare.prepare_{data_type}_{logical_type}({location}, {params}))'
+		return f'write.write_{data_type}({self.buffer_name}, prepare.prepare_{logical_type}({location}))'
 
 
 
@@ -36,8 +36,8 @@ class code_generator:
 		Returns the corresponding serialization function call string.
 		'''
 		if type_ == 'null':
-			return f'{constants.constants.WRITE_PREFIX}write.write_null({self.buffer_name})'
-		return f'{constants.constants.WRITE_PREFIX}write.write_{type_}({self.buffer_name}, {location})'
+			return f'write.write_null({self.buffer_name})'
+		return f'write.write_{type_}({self.buffer_name}, {location})'
 
 
 
@@ -45,7 +45,7 @@ class code_generator:
 		'''
 		Returns a function call string for union index.
 		'''
-		return f'{constants.constants.WRITE_PREFIX}write.write_long({self.buffer_name}, {index})'
+		return f'write.write_long({self.buffer_name}, {index})'
 
 
 
@@ -71,7 +71,7 @@ class code_generator:
 		Return enum serialization string.
 		'''
 		symbols = schema['symbols']
-		return f'{constants.constants.WRITE_PREFIX}write.write_int({self.buffer_name}, {symbols}.index({location}))'
+		return f'write.write_int({self.buffer_name}, {symbols}.index({location}))'
 
 
 	def get_union_serialization(self, schema, location, jinja_env):

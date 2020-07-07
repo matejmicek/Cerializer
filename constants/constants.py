@@ -31,9 +31,6 @@ MLS_PER_HOUR = MLS_PER_MINUTE * 60
 
 DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
-WRITE_PREFIX = ''
-PREPARE_PREFIX = 'cerializer.'
-WRITE_LOCATION = ''
 
 SCHEMATA = [
 	('array_schema', 1),

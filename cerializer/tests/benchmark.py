@@ -2,7 +2,6 @@ import timeit
 
 import texttable
 import yaml
-
 import constants.constants
 
 
@@ -21,7 +20,7 @@ import json
 import io
 import json
 import yaml
-import cerializer.{schema_name + '_' + str(schema_version)} as c
+import {schema_name + '_' + str(schema_version)} as c
 # fixes a Timeit NameError 'mappingproxy'
 from types import MappingProxyType as mappingproxy
 
