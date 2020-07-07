@@ -1,13 +1,19 @@
 import timeit
+
+import texttable
 import yaml
-import texttable as tt
+
+import constants.constants
 
 
 
-NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'decimal', 'date', 'uuid')
+NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'time', 'decimal', 'date', 'uuid')
 
 
-def benchmark(schema_favro, path_cerializer, count, schema_name, schema_version):
+def benchmark_schema(schema_favro, path_cerializer, count, schema_name, schema_version):
+	'''
+	Helper function. This should not be used on its own. Use benchmark() instead.
+	'''
 	setup = f'''
 import benchmark
 import fastavro
@@ -50,49 +56,42 @@ output = io.BytesIO()
 	return (score_cerializer_serialize, score_fastavro_serialize, score_json_serialize)
 
 
-schemata = [
-	('array_schema', 1),
-	('union_schema', 1),
-	('enum_schema', 1),
-	('string_schema', 1),
-	('map_schema', 1),
-	('fixed_schema', 1),
-	('timestamp_schema', 1),
-	('timestamp_schema_micros', 1),
-	('bytes_decimal_schema', 1),
-	('fixed_decimal_schema', 1),
-	('int_date_schema', 1),
-	('string_uuid_schema', 1),
-]
-
-results = []
-
-for schema, version in schemata:
-	SCHEMA_FILE = f'schemata/messaging/{schema}/{version}/schema.yaml'
-	SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
-	result = benchmark(
-		path_cerializer = f'schemata/messaging/{schema}/{version}/',
-		schema_favro = SCHEMA_FAVRO,
-		count = 10000,
-		schema_name = schema,
-		schema_version = version
-	)
-
-	results.append((result[1]/result[0], result[2]/result[0]))
 
 
-names = [f'{schema[0]}:{str(schema[1])}' for schema in schemata]
+def benchmark():
+	'''
+	Benchmarking function. Compares FastAvro, Cerializer and Json.
+	In some cases, Json is not able to serialize given data. In such a case it is given an arbitrary score.
+	'''
+	schemata = constants.constants.SCHEMATA
+	results = []
+
+	for schema, version in schemata:
+		SCHEMA_FILE = f'schemata/messaging/{schema}/{version}/schema.yaml'
+		SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
+		result = benchmark_schema(
+			path_cerializer = f'schemata/messaging/{schema}/{version}/',
+			schema_favro = SCHEMA_FAVRO,
+			count = 10000,
+			schema_name = schema,
+			schema_version = version
+		)
+
+		results.append((result[1]/result[0], result[2]/result[0]))
 
 
-table = tt.Texttable()
-table.header(['schema', 'FastAvro [x faster]', 'Json [x faster]'])
-fast_avro_score = [res[0] for res in results]
-json_score = [res[1] for res in results]
+	names = [f'{schema[0]}:{str(schema[1])}' for schema in schemata]
 
 
-for row in zip(names, fast_avro_score, json_score):
-	table.add_row(row)
+	table = texttable.Texttable()
+	table.header(['schema', 'FastAvro [x faster]', 'Json [x faster]'])
+	fast_avro_score = [res[0] for res in results]
+	json_score = [res[1] for res in results]
 
-print(table.draw())
 
+	for row in zip(names, fast_avro_score, json_score):
+		table.add_row(row)
 
+	print(table.draw())
+
+benchmark()

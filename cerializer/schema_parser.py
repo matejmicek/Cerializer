@@ -1,15 +1,17 @@
-import constants.constants
-import avro.schema
-import jinja2
-import os
-import yaml
 import json
-import pprint
 from types import MappingProxyType
+
+import avro.schema
+import yaml
+
+import constants.constants
 
 
 
 def prepare(logical_type, data_type, buffer_name, location, schema):
+	'''
+	Returns a serialization function string for logical types that need to be prepared first.
+	'''
 	if logical_type == 'decimal':
 		params = {
 			'scale': schema.get('scale', 0),
@@ -20,6 +22,9 @@ def prepare(logical_type, data_type, buffer_name, location, schema):
 
 
 def correct_type(type_: str):
+	'''
+	Corrects the nuances between Avro type definitions and actual python type names.
+	'''
 	if type_ == 'string':
 		return 'str'
 	if type_ == 'boolean':
@@ -34,6 +39,9 @@ def correct_type(type_: str):
 
 
 def get_serialization_function(type_: str, location, buffer_name: str):
+	'''
+	Returns the corresponding serialization function call string.
+	'''
 	if type_ == 'null':
 		return f'{constants.constants.WRITE_PREFIX}write.write_null({buffer_name})'
 	return f'{constants.constants.WRITE_PREFIX}write.write_{type_}({buffer_name}, {location})'
@@ -41,11 +49,17 @@ def get_serialization_function(type_: str, location, buffer_name: str):
 
 
 def get_union_index_function(index: int, buffer_name: str):
+	'''
+	Returns a function call string for union index.
+	'''
 	return f'{constants.constants.WRITE_PREFIX}write.write_long({buffer_name}, {index})'
 
 
 
 def get_array_serialization(schema, location, buffer_name, env):
+	'''
+	Return array serialization string.
+	'''
 	item_deserialization_code = generate_serialization_code(schema['items'], 'item', buffer_name, env)
 	template = env.get_template('array.jinja2')
 	return template.render(
@@ -56,11 +70,17 @@ def get_array_serialization(schema, location, buffer_name, env):
 
 
 def get_enum_serialization(schema, location, buffer_name):
+	'''
+	Return enum serialization string.
+	'''
 	symbols = schema['symbols']
 	return f'{constants.constants.WRITE_PREFIX}write.write_int({buffer_name}, {symbols}.index({location}))'
 
 
 def get_union_serialization(schema, location, buffer_name, jinja_env):
+	'''
+	Return union serialization string.
+	'''
 	name = schema['name']
 	type_ = schema['type']
 	new_location = f'{location}[\'{name}\']'
@@ -90,6 +110,9 @@ def get_union_serialization(schema, location, buffer_name, jinja_env):
 
 
 def get_map_serialization(schema, location, buffer_name, env):
+	'''
+	Return map serialization string.
+	'''
 	template = env.get_template('map.jinja2')
 	return template.render(
 		location = location,
@@ -100,6 +123,9 @@ def get_map_serialization(schema, location, buffer_name, env):
 
 
 def generate_serialization_code(schema, location, buffer_name: str, jinja_env):
+	'''
+	Driver function to handle code generation for a schema.
+	'''
 	jinja_env.globals['correct_type'] = correct_type
 	if type(schema) is str:
 		return get_serialization_function(schema, location, buffer_name)
@@ -140,5 +166,8 @@ def generate_serialization_code(schema, location, buffer_name: str, jinja_env):
 
 
 def parse_schema_from_file(path):
+	'''
+	Wrapper for loading schemata from yaml
+	'''
 	json_object = yaml.safe_load(open(path))
 	return avro.schema.parse(json.dumps(json_object)).to_json()

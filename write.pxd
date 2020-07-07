@@ -1,10 +1,9 @@
-#cython: language_level=3
-from libc.stdio cimport fopen, fclose, FILE, EOF, fseek, SEEK_END, SEEK_SET, fwrite, fscanf, rewind, sscanf
-from libc.stdio cimport ftell, fgetc, fgets, getc, gets, feof, fread, getline, fprintf
-from libc.stdlib cimport malloc
-from libc.string cimport strlen, memcpy, strcpy, strtok, strchr, strncpy
-import os
+'''
+This module deals with writing basic types. 
+Complex types are decomposed first in schema_parser.
 
+This code is heavily inspired by FastAvro https://github.com/fastavro/fastavro
+'''
 
 
 ctypedef int int32

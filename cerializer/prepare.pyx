@@ -1,5 +1,5 @@
 #cython: language_level=3
-from constants.constants import *
+import constants.constants
 from libc.time cimport tm, mktime
 from cpython.int cimport PyInt_AS_LONG
 from cpython.tuple cimport PyTuple_GET_ITEM
@@ -11,18 +11,25 @@ import uuid
 
 
 
+'''
+This module deals with preparation of logical types.
+It is only used from within Cerializer.
+'''
+
+
+
 ctypedef long long long64
 
 cdef is_windows = os.name == 'nt'
 cdef has_timestamp_fn = hasattr(datetime.datetime, 'timestamp')
 
-cdef long64 MCS_PER_SECOND = MCS_PER_SECOND
-cdef long64 MCS_PER_MINUTE = MCS_PER_MINUTE
-cdef long64 MCS_PER_HOUR = MCS_PER_HOUR
+cdef long64 MCS_PER_SECOND = constants.constants.MCS_PER_SECOND
+cdef long64 MCS_PER_MINUTE = constants.constants.MCS_PER_MINUTE
+cdef long64 MCS_PER_HOUR = constants.constants.MCS_PER_HOUR
 
-cdef long64 MLS_PER_SECOND = MLS_PER_SECOND
-cdef long64 MLS_PER_MINUTE = MLS_PER_MINUTE
-cdef long64 MLS_PER_HOUR = MLS_PER_HOUR
+cdef long64 MLS_PER_SECOND = constants.constants.MLS_PER_SECOND
+cdef long64 MLS_PER_MINUTE = constants.constants.MLS_PER_MINUTE
+cdef long64 MLS_PER_HOUR = constants.constants.MLS_PER_HOUR
 
 
 epoch = datetime.datetime(1970, 1, 1, tzinfo=utc)
@@ -112,9 +119,9 @@ cpdef inline prepare_timestamp_micros(object data):
 
 cpdef inline prepare_date(object data):
     if isinstance(data, datetime.date):
-        return data.toordinal() - DAYS_SHIFT
+        return data.toordinal() - constants.constants.DAYS_SHIFT
     elif isinstance(data, str):
-        return datetime.datetime.strptime(data, "%Y-%m-%d").toordinal() - DAYS_SHIFT
+        return datetime.datetime.strptime(data, "%Y-%m-%d").toordinal() - constants.constants.DAYS_SHIFT
     else:
         return data
 
