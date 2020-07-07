@@ -21,7 +21,7 @@ import json
 import io
 import json
 import yaml
-import {schema_name + '_' + str(schema_version)} as c
+import cerializer.{schema_name + '_' + str(schema_version)} as c
 # fixes a Timeit NameError 'mappingproxy'
 from types import MappingProxyType as mappingproxy
 
@@ -72,7 +72,7 @@ def benchmark():
 		result = benchmark_schema(
 			path_cerializer = f'schemata/messaging/{schema}/{version}/',
 			schema_favro = SCHEMA_FAVRO,
-			count = 10000,
+			count = 100000,
 			schema_name = schema,
 			schema_version = version
 		)

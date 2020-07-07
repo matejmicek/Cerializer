@@ -1,27 +1,26 @@
-cdef dict d_datum
 datum = {{ location }}
 try:
-    d_datum = <dict?>(datum)
+    {{ dict_name }} = <dict?>(datum)
 except TypeError:
     if len(datum) > 0:
         {{ write_prefix }}write.write_long({{ buffer_name }}, len(datum))
-        for key, val in datum.items():
-            {{ write_prefix }}write.write_string({{ buffer_name }}, key)
+        for {{ key_name }}, {{ val_name }} in datum.items():
+            {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
             {% for t in schema['values'] %}
-            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} key not in {{ location }}{% else %} type({{ location }}[key]) is {{ correct_type(t) }}{% endif %}:
+            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} {{ key_name }} not in {{ location }}{% else %} type({{ location }}[{{ key_name }}]) is {{ correct_type(t) }}{% endif %}:
                 {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
-                {{ generate_serialization_code(t, 'val', buffer_name, env)|indent(16) }}
+                {{ generate_serialization_code(t, val_name, env)|indent(16) }}
             {% endfor %}
     {{ write_prefix }}write.write_long({{ buffer_name }}, 0)
 else:
     # Faster, special-purpose code where datum is a Python dict.
-    if len(d_datum) > 0:
-        {{ write_prefix }}write.write_long({{ buffer_name }}, len(d_datum))
-        for key, val in d_datum.items():
-            {{ write_prefix }}write.write_string({{ buffer_name }}, key)
+    if len({{ dict_name }}) > 0:
+        {{ write_prefix }}write.write_long({{ buffer_name }}, len({{ dict_name }}))
+        for {{ key_name }}, {{ val_name }} in {{ dict_name }}.items():
+            {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
             {% for t in schema['values'] %}
-            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} key not in {{ location }}{% else %} type({{ location }}[key]) is {{ correct_type(t) }}{% endif %}:
+            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} {{ key_name }} not in {{ location }}{% else %} type({{ location }}[{{ key_name }}]) is {{ correct_type(t) }}{% endif %}:
                 {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
-                {{ generate_serialization_code(t, 'val', buffer_name, env)|indent(16) }}
+                {{ generate_serialization_code(t, val_name, env)|indent(16) }}
             {% endfor %}
     {{ write_prefix }}write.write_long({{ buffer_name }}, 0)

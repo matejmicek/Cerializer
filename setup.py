@@ -6,6 +6,6 @@ import os
 
 setup(
     ext_modules = cythonize(
-            ['cerializer/cerializer_base/*.pyx', 'cerializer/*.pyx'], annotate=False
+            ['cerializer_base/*.pyx', '*.pyx'], annotate=False
     )
 )

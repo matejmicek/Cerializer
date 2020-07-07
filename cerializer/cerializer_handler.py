@@ -18,17 +18,27 @@ def render_code_for_schema(rendered_filename, schema):
     Renders code for a given schema into a .pyx file.
     '''
     env = jinja2.Environment(
-        loader = jinja2.FileSystemLoader(searchpath = 'cerializer/templates')
+        loader = jinja2.FileSystemLoader(searchpath = 'templates')
     )
-    env.globals['serialization_code'] = cerializer.schema_parser.generate_serialization_code
-    env.globals['write_prefix'] = constants.constants.WRITE_PREFIX
-    env.globals['prepare_prefix'] = constants.constants.PREPARE_PREFIX
-    env.globals['write_location'] = constants.constants.WRITE_LOCATION
     env.globals['env'] = env
+    location = 'data'
+    code_generator = cerializer.schema_parser.code_generator(buffer_name = 'buffer')
+    serialization_code = code_generator.generate_serialization_code(
+        schema = schema,
+        location = location,
+        jinja_env = env
+    )
+    cdefs = '\n'.join(code_generator.cdefs)
 
     template = env.get_template('template.jinja2')
-    rendered_template = template.render(schema = schema)
-    output = open(os.path.join('cerializer', rendered_filename), 'w')
+    rendered_template = template.render(
+        location = location,
+        cdefs = cdefs,
+        buffer_name = code_generator.buffer_name,
+        serialization_code = serialization_code,
+        prepare_prefix = constants.constants.PREPARE_PREFIX
+    )
+    output = open(rendered_filename, 'w')
     output.write(rendered_template)
     output.close()
 
@@ -39,7 +49,7 @@ def update_cerializer(schema_roots):
     '''
     code_base_path = 'cerializer_base'
     try:
-        os.mkdir(os.path.join('cerializer', code_base_path))
+        os.mkdir(os.path.join(code_base_path))
     except OSError:
         pass
     for schema_root in schema_roots:
@@ -52,4 +62,7 @@ def update_cerializer(schema_roots):
                     code_path = os.path.join(code_base_path, filename)
                     schema = cerializer.schema_parser.parse_schema_from_file(schema_path.decode())
                     render_code_for_schema(code_path, schema = schema)
-    os.system('python setup.py build_ext --inplace')
+    os.system('python ../setup.py build_ext --inplace')
+
+
+update_cerializer(['tests/schemata'])

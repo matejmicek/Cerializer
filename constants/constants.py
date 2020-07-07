@@ -32,7 +32,7 @@ MLS_PER_HOUR = MLS_PER_MINUTE * 60
 DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
 WRITE_PREFIX = ''
-PREPARE_PREFIX = ''
+PREPARE_PREFIX = 'cerializer.'
 WRITE_LOCATION = ''
 
 SCHEMATA = [
@@ -50,4 +50,5 @@ SCHEMATA = [
 	('string_uuid_schema', 1),
 	('string_uuid_schema', 1),
 	('long_time_micros_schema', 1),
+	('huge_schema', 1)
 ]
