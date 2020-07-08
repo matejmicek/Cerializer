@@ -32,12 +32,14 @@ MLS_PER_HOUR = MLS_PER_MINUTE * 60
 DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
 
+
 SCHEMATA = [
 	('array_schema', 1),
 	('union_schema', 1),
 	('string_schema', 1),
 	('enum_schema', 1),
 	('map_schema', 1),
+	('plain_int', 1),
 	('fixed_schema', 1),
 	('timestamp_schema', 1),
 	('timestamp_schema_micros', 1),
