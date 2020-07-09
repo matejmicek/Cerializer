@@ -21,6 +21,7 @@ _cython_inline_cache = {}
 
 
 
+
 def compile(code, *args, **kwds):
 	return cython_inline(code, force = True, language_level = 3, *args, **kwds)
 

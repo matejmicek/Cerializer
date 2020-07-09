@@ -42,6 +42,7 @@ import json
 code = """
 {code}"""
 buff = io.BytesIO()
+
 x = cerializer.compiler.compile(code)['serialize']
 	'''
 	score_fastavro_serialize = timeit.timeit(
