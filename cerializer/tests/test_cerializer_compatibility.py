@@ -41,6 +41,6 @@ def test_string_compiling(schema_name, schema_version):
 	fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
 	with open(f'../cerializer_base/{schema_name + "_" + str(schema_version)}.pyx') as f:
 		code = f.read()
-	serialize = cerializer.compiler.inline(code)['serialize']
+	serialize = cerializer.compiler.compile(code)['serialize']
 	serialize(data, output)
 	assert output.getvalue() == output_fastavro.getvalue()

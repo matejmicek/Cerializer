@@ -42,7 +42,8 @@ import json
 code = """
 {code}"""
 buff = io.BytesIO()
-x = cerializer.compiler.inline(code)['serialize']
+
+x = cerializer.compiler.compile(code)['serialize']
 	'''
 	score_fastavro_serialize = timeit.timeit(
 		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
@@ -69,7 +70,7 @@ x = cerializer.compiler.inline(code)['serialize']
 			number = count
 		)
 	else:
-		score_json_serialize = 666*score_cerializer_serialize
+		score_json_serialize = 666*score_string_cerializer
 
 	return (
 		score_cerializer_serialize,
