@@ -9,8 +9,9 @@ import constants.constants
 
 
 class code_generator:
-	def __init__(self, buffer_name: str):
+	def __init__(self, buffer_name: str, read_var_name):
 		self.buffer_name = buffer_name
+		self.read_var_name = read_var_name
 		self.cdefs = []
 		#TODO will be changed to only one generator, but for now this is more readable
 		self.dict_name_generator = name_generator('d_dict')
@@ -38,6 +39,16 @@ class code_generator:
 		if type_ == 'null':
 			return f'write.write_null({self.buffer_name})'
 		return f'write.write_{type_}({self.buffer_name}, {location})'
+
+
+	def get_deserialization_function(self, type_: str, location: str):
+		'''
+		Returns the corresponding serialization function call string.
+		'''
+		if type_ == 'null':
+			return f'{location} = None'
+		return f'{location} = read.read_{type_}({self.buffer_name})'
+
 
 
 
@@ -177,6 +188,72 @@ class code_generator:
 			new_location = f'{location}[\'{name}\']'
 			return self.get_serialization_function(type_, new_location)
 
+
+
+
+
+
+	def  get_deserialization_code (self, schema, location, jinja_env):
+		return ''
+		'''
+		Driver function to handle code generation for a schema.
+		'''
+		jinja_env.globals['correct_type'] = correct_type
+		if type(schema) is str:
+			if schema in constants.constants.BASIC_TYPES:
+				return self.get_deserialization_function(schema, location)
+			else:
+				raise NotImplementedError(f'not implemented for {schema}')
+
+		type_ = schema['type']
+		'''
+		if f'logicalType' in schema:
+			prepared = self.prepare(schema['logicalType'].replace('-', '_'), type_, location, schema)
+			return prepared
+		'''
+		if type_ == constants.constants.RECORD:
+			return '\n'.join(
+				(
+					self.generate_serialization_code(
+						field,
+						location,
+						jinja_env
+					)
+				) for field in schema['fields'])
+		else:
+			raise NotImplementedError('End of list Implementation')
+
+		'''
+		elif type_ == constants.constants.ARRAY:
+			return self.get_array_serialization(schema, location, jinja_env)
+		elif type_ == constants.constants.ENUM:
+			return self.get_enum_serialization(schema, location)
+		elif type_ == constants.constants.MAP:
+			return self.get_map_serialization(
+				schema,
+				location,
+				jinja_env
+			)
+		elif type_ == constants.constants.FIXED:
+			return self.get_serialization_function(type_, location)
+		elif type(type_) is dict:
+			name = schema['name']
+			new_location = f'{location}[\'{name}\']'
+			return self.generate_serialization_code(type_, new_location, jinja_env)
+		elif type(type_) is list:
+			return self.get_union_serialization(schema, location, jinja_env)
+
+		# TODO needs to be fixed
+		elif type(type_) is type(MappingProxyType({'a': 'b'})):
+			name = schema['name']
+			new_location = f'{location}[\'{name}\']'
+			return self.generate_serialization_code(dict(type_), new_location, jinja_env)
+
+		elif type_ in constants.constants.BASIC_TYPES:
+			name = schema['name']
+			new_location = f'{location}[\'{name}\']'
+			return self.get_serialization_function(type_, new_location)
+		'''
 
 
 def name_generator(prefix: str):

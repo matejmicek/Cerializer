@@ -1,11 +1,6 @@
-#cython: language_level=3
 cimport write
 import prepare
 
-
-
-ctypedef long long long64
-ctypedef unsigned long long ulong64
 
 cpdef serialize({{ location }}, output):
     cdef bytearray {{ buffer_name }} = bytearray()

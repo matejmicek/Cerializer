@@ -2,7 +2,7 @@ import os
 
 import jinja2
 
-import cerializer.schema_parser
+import cerializer.schema_handler
 import constants.constants
 
 
@@ -22,12 +22,13 @@ def render_code_for_schema(rendered_filename, schema):
     )
     env.globals['env'] = env
     location = 'data'
-    code_generator = cerializer.schema_parser.code_generator(buffer_name = 'buffer')
+    code_generator = cerializer.schema_handler.code_generator(buffer_name = 'buffer', read_var_name = 'res')
     serialization_code = code_generator.generate_serialization_code(
         schema = schema,
         location = location,
         jinja_env = env
     )
+    deserialization_code = code_generator.get_deserialization_code(schema, location, env)
     cdefs = '\n'.join(code_generator.cdefs)
 
     template = env.get_template('template.jinja2')
@@ -35,7 +36,8 @@ def render_code_for_schema(rendered_filename, schema):
         location = location,
         cdefs = cdefs,
         buffer_name = code_generator.buffer_name,
-        serialization_code = serialization_code
+        serialization_code = serialization_code,
+        deserialization_code = deserialization_code
     )
     output = open(rendered_filename, 'w')
     output.write(rendered_template)
@@ -59,7 +61,7 @@ def update_cerializer(schema_roots):
                     schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
                     filename = f'{schema_name.decode()}_{version.decode()}.pyx'
                     code_path = os.path.join(code_base_path, filename)
-                    schema = cerializer.schema_parser.parse_schema_from_file(schema_path.decode())
+                    schema = cerializer.schema_handler.parse_schema_from_file(schema_path.decode())
                     render_code_for_schema(code_path, schema = schema)
     os.system(f'python setup.py build_ext --inplace')
 
