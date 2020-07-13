@@ -1,2 +1,4 @@
 order_id: 'aaaa'
-trades: ['ABCD', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE', 'BCDE']
+trades:
+  - meta:
+      '6666': 'AABB'

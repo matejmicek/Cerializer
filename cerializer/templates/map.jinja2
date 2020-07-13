@@ -9,7 +9,7 @@ except TypeError:
             {% for t in schema['values'] %}
             {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} {{ key_name }} not in {{ location }}{% else %} type({{ location }}[{{ key_name }}]) is {{ correct_type(t) }}{% endif %}:
                 {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
-                {{ generate_serialization_code(t, val_name, env)|indent(16) }}
+                {{ generate_serialization_code(t, val_name)|indent(16) }}
             {% endfor %}
     {{ write_prefix }}write.write_long({{ buffer_name }}, 0)
 else:
@@ -21,6 +21,6 @@ else:
             {% for t in schema['values'] %}
             {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} {{ key_name }} not in {{ location }}{% else %} type({{ location }}[{{ key_name }}]) is {{ correct_type(t) }}{% endif %}:
                 {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
-                {{ generate_serialization_code(t, val_name, env)|indent(16) }}
+                {{ generate_serialization_code(t, val_name)|indent(16) }}
             {% endfor %}
     {{ write_prefix }}write.write_long({{ buffer_name }}, 0)

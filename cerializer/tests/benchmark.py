@@ -4,13 +4,13 @@ import texttable
 import yaml
 import constants.constants
 import datetime
-
+import cerializer.cerializer_handler
 
 
 NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'time', 'decimal', 'date', 'uuid')
 
 
-def benchmark_schema(schema_favro, path_cerializer, count, schema_name, schema_version):
+def benchmark_schema(schema_favro, path_cerializer, count, schema_name, schema_identifier):
 	'''
 	Helper function. This should not be used on its own. Use benchmark() instead.
 	'''
@@ -39,7 +39,7 @@ import json
 
 buff = io.BytesIO()
 
-x = c.Cerializer(['schemata']).code['{schema_name}_{schema_version}']['serialize']
+x = c.Cerializer(['schemata']).code['{schema_identifier}']['serialize']
 	'''
 	score_fastavro_serialize = timeit.timeit(
 		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
@@ -87,7 +87,7 @@ def benchmark():
 			schema_favro = SCHEMA_FAVRO,
 			count = 100000,
 			schema_name = schema,
-			schema_version = version
+			schema_identifier = cerializer.cerializer_handler.get_schema_identifier('messaging', schema, version)
 		)
 
 		results.append((result[1]/result[0], result[2]/result[0]))

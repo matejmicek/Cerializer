@@ -5,13 +5,14 @@ import avro.schema
 import fastavro
 import yaml
 import pprint
+import cerializer.cerializer_handler
 
 import constants.constants
 
 
 
-class code_generator:
-	def __init__(self, buffer_name: str, read_var_name):
+class CodeGenerator:
+	def __init__(self, jinja_env, schema_roots, buffer_name: str, read_var_name):
 		self.buffer_name = buffer_name
 		self.read_var_name = read_var_name
 		self.cdefs = []
@@ -19,6 +20,8 @@ class code_generator:
 		self.dict_name_generator = name_generator('d_dict')
 		self.val_name_generator = name_generator('val')
 		self.key_name_generator = name_generator('key')
+		self.schema_database = cerializer.schema_handler.get_subschemata(schema_roots)
+		self.jinja_env = jinja_env
 
 	def prepare(self, logical_type, data_type, location, schema):
 		'''
@@ -40,6 +43,8 @@ class code_generator:
 		'''
 		if type_ == 'null':
 			return f'write.write_null({self.buffer_name})'
+		if type_ in self.schema_database:
+			return self.generate_serialization_code(self.schema_database[type_], location)
 		return f'write.write_{type_}({self.buffer_name}, {location})'
 
 
@@ -62,20 +67,23 @@ class code_generator:
 
 
 
-	def get_array_serialization(self, schema, location, env):
+	def get_array_serialization(self, schema, location):
 		'''
 		Return array serialization string.
 		'''
-		item_deserialization_code = self.generate_serialization_code(
-			schema['items']['type'],
-			'item',
-			env
+		print()
+		print()
+		print('printing from array ')
+		print(schema)
+		item_serialization_code = self.generate_serialization_code(
+			schema['items'],
+			'item'
 		)
-		template = env.get_template('array.jinja2')
+		template = self.jinja_env.get_template('array.jinja2')
 		return template.render(
 			location = location,
 			buffer_name = self.buffer_name,
-			item_deserialization_code = item_deserialization_code
+			item_serialization_code = item_serialization_code
 		)
 
 
@@ -87,7 +95,7 @@ class code_generator:
 		return f'write.write_int({self.buffer_name}, {symbols}.index({location}))'
 
 
-	def get_union_serialization(self, schema, location, jinja_env):
+	def get_union_serialization(self, schema, location):
 		'''
 		Return union serialization string.
 		'''
@@ -114,18 +122,18 @@ class code_generator:
 					self.get_serialization_function(possible_type, new_location)
 				)
 			)
-		template = jinja_env.get_template('union.jinja2')
+		template = self.jinja_env.get_template('union.jinja2')
 		return template.render(types = possible_types_and_code, location = location, name = name)
 
 
 
-	def get_map_serialization(self, schema, location, env):
+	def get_map_serialization(self, schema, location):
 		'''
 		Return map serialization string.
 		'''
 		dict_name = next(self.dict_name_generator)
 		self.cdefs.append(get_cdef('dict', dict_name))
-		template = env.get_template('map.jinja2')
+		template = self.jinja_env.get_template('map.jinja2')
 		return template.render(
 			dict_name = dict_name,
 			location = location,
@@ -138,11 +146,11 @@ class code_generator:
 
 
 
-	def generate_serialization_code(self, schema, location, jinja_env):
+	def generate_serialization_code(self, schema, location):
 		'''
 		Driver function to handle code generation for a schema.
 		'''
-		jinja_env.globals['correct_type'] = correct_type
+		self.jinja_env.globals['correct_type'] = correct_type
 		if type(schema) is str:
 			return self.get_serialization_function(schema, location)
 
@@ -156,34 +164,32 @@ class code_generator:
 				(
 					self.generate_serialization_code(
 						field,
-						location,
-						jinja_env
+						location
 					)
 				) for field in schema['fields'])
 		elif type_ == constants.constants.ARRAY:
-			return self.get_array_serialization(schema, location, jinja_env)
+			return self.get_array_serialization(schema, location)
 		elif type_ == constants.constants.ENUM:
 			return self.get_enum_serialization(schema, location)
 		elif type_ == constants.constants.MAP:
 			return self.get_map_serialization(
 				schema,
-				location,
-				jinja_env
+				location
 			)
 		elif type_ == constants.constants.FIXED:
 			return self.get_serialization_function(type_, location)
 		elif type(type_) is dict:
 			name = schema['name']
 			new_location = f'{location}[\'{name}\']'
-			return self.generate_serialization_code(type_, new_location, jinja_env)
+			return self.generate_serialization_code(type_, new_location)
 		elif type(type_) is list:
-			return self.get_union_serialization(schema, location, jinja_env)
+			return self.get_union_serialization(schema, location)
 
 		# TODO needs to be fixed
 		elif type(type_) is type(MappingProxyType({'a':'b'})):
 			name = schema['name']
 			new_location = f'{location}[\'{name}\']'
-			return self.generate_serialization_code(dict(type_), new_location, jinja_env)
+			return self.generate_serialization_code(dict(type_), new_location)
 
 		elif type_ in constants.constants.BASIC_TYPES:
 			name = schema.get('name')
@@ -230,3 +236,26 @@ def correct_type(type_):
 
 def get_cdef(type_: str, name: str):
 	return f'cdef {type_} {name}'
+
+
+
+def get_subschemata(schema_roots):
+	schema_database = {}
+	for schema_path, schema_identifier in cerializer.cerializer_handler.iterate_over_schema_roots(schema_roots):
+		namespace = schema_identifier.split('.')[0] # TODO change
+		schema = parse_schema_from_file(schema_path)
+		scan_schema_for_subschemas(schema, namespace, schema_database)
+	return schema_database
+
+
+
+def scan_schema_for_subschemas(schema, namespace, schema_database):
+	if type(schema) is dict:
+		name = schema.get('name')
+		if name:
+			schema_database[name] = schema
+		for _, subschema in schema.items():
+			scan_schema_for_subschemas(subschema, namespace, schema_database)
+	if type(schema) in (list, dict):
+		for subschema in schema:
+			scan_schema_for_subschemas(subschema, namespace, schema_database)

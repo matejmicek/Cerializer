@@ -47,7 +47,7 @@ SCHEMATA = [
 	('bytes_decimal_schema', 1),
 	('int_date_schema', 1),
 	('string_uuid_schema', 1),
-	('string_uuid_schema', 1),
+	('InstrumentLimit', 1),
 	('long_time_micros_schema', 1),
 	('huge_schema', 1)
 ]

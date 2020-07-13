@@ -94,9 +94,9 @@ def cython_inline(
 
 	_unbound_symbols = _cython_inline_cache.get(code)
 	if _unbound_symbols is not None:
-		imports = set([i.split()[1] for i in imports])
+		bound_by_imports = set([i.split()[1] for i in imports])
 		# removing import names from unbound symbols, since we know they are going to be imported
-		_real_unbound_symbols = set(_unbound_symbols).difference(imports)
+		_real_unbound_symbols = set(_unbound_symbols).difference(bound_by_imports)
 		_unbound_symbols = tuple(_real_unbound_symbols)
 		Cython.Build.Inline._populate_unbound(kwds, _unbound_symbols, None, None)
 		args = sorted(kwds.items())

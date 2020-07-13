@@ -1,4 +1,4 @@
-name: Profit
+name: Profit:1
 namespace: messaging
 type: record
 fields:
