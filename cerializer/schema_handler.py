@@ -2,7 +2,9 @@ import json
 from types import MappingProxyType
 
 import avro.schema
+import fastavro
 import yaml
+import pprint
 
 import constants.constants
 
@@ -65,7 +67,7 @@ class code_generator:
 		Return array serialization string.
 		'''
 		item_deserialization_code = self.generate_serialization_code(
-			schema['items'],
+			schema['items']['type'],
 			'item',
 			env
 		)
@@ -184,76 +186,11 @@ class code_generator:
 			return self.generate_serialization_code(dict(type_), new_location, jinja_env)
 
 		elif type_ in constants.constants.BASIC_TYPES:
-			name = schema['name']
-			new_location = f'{location}[\'{name}\']'
-			return self.get_serialization_function(type_, new_location)
-
-
-
-
-
-
-	def  get_deserialization_code (self, schema, location, jinja_env):
-		return ''
-		'''
-		Driver function to handle code generation for a schema.
-		'''
-		jinja_env.globals['correct_type'] = correct_type
-		if type(schema) is str:
-			if schema in constants.constants.BASIC_TYPES:
-				return self.get_deserialization_function(schema, location)
-			else:
-				raise NotImplementedError(f'not implemented for {schema}')
-
-		type_ = schema['type']
-		'''
-		if f'logicalType' in schema:
-			prepared = self.prepare(schema['logicalType'].replace('-', '_'), type_, location, schema)
-			return prepared
-		'''
-		if type_ == constants.constants.RECORD:
-			return '\n'.join(
-				(
-					self.generate_serialization_code(
-						field,
-						location,
-						jinja_env
-					)
-				) for field in schema['fields'])
-		else:
-			raise NotImplementedError('End of list Implementation')
-
-		'''
-		elif type_ == constants.constants.ARRAY:
-			return self.get_array_serialization(schema, location, jinja_env)
-		elif type_ == constants.constants.ENUM:
-			return self.get_enum_serialization(schema, location)
-		elif type_ == constants.constants.MAP:
-			return self.get_map_serialization(
-				schema,
-				location,
-				jinja_env
-			)
-		elif type_ == constants.constants.FIXED:
+			name = schema.get('name')
+			if name:
+				location = f'{location}[\'{name}\']'
 			return self.get_serialization_function(type_, location)
-		elif type(type_) is dict:
-			name = schema['name']
-			new_location = f'{location}[\'{name}\']'
-			return self.generate_serialization_code(type_, new_location, jinja_env)
-		elif type(type_) is list:
-			return self.get_union_serialization(schema, location, jinja_env)
 
-		# TODO needs to be fixed
-		elif type(type_) is type(MappingProxyType({'a': 'b'})):
-			name = schema['name']
-			new_location = f'{location}[\'{name}\']'
-			return self.generate_serialization_code(dict(type_), new_location, jinja_env)
-
-		elif type_ in constants.constants.BASIC_TYPES:
-			name = schema['name']
-			new_location = f'{location}[\'{name}\']'
-			return self.get_serialization_function(type_, new_location)
-		'''
 
 
 def name_generator(prefix: str):
@@ -269,8 +206,7 @@ def parse_schema_from_file(path):
 	Wrapper for loading schemata from yaml
 	'''
 	json_object = yaml.safe_load(open(path))
-	return avro.schema.parse(json.dumps(json_object)).to_json()
-
+	return fastavro.parse_schema(json_object, expand = True)
 
 
 def correct_type(type_):
