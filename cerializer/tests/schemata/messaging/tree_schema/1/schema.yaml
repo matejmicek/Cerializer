@@ -12,7 +12,7 @@ fields:
         - name: man
           type:
             type: record
-            name: reference_b:1
+            name: reference_bb:1
             fields:
               - name: plot
                 type: ['string', reference_t:1]

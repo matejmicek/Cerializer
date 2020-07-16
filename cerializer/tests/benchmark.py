@@ -81,7 +81,7 @@ def benchmark():
 	Benchmarking function. Compares FastAvro, Cerializer and Json.
 	In some cases, Json is not able to serialize given data. In such a case it is given an arbitrary score.
 	'''
-	schemata = constants.constants.SCHEMATA
+	schemata = list(constants.constants.iterate_over_schemata('schemata'))
 	results = []
 
 	for schema, version in schemata:

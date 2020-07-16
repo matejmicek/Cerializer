@@ -1,25 +1,15 @@
 #cython: language_level=3
+import constants.constants
+from libc.time cimport tm, mktime
+from cpython.int cimport PyInt_AS_LONG
+from cpython.tuple cimport PyTuple_GET_ITEM
 import datetime
-import decimal
 import os
+from pytz import utc
+import decimal
 import uuid
 
-from cpython.int cimport
-
-
-
-PyInt_AS_LONG
-from cpython.tuple cimport
-
-
-
-PyTuple_GET_ITEM
-from libc.time import mktime, tm
-from pytz import utc
-
-import constants.constants
-
-
+import qutils.time.nanotime
 
 '''
 This module deals with preparation of logical types.
@@ -230,6 +220,7 @@ cpdef inline prepare_uuid(object data):
         return data
 
 
+
 cpdef inline prepare_time_millis(object data):
     if isinstance(data, datetime.time):
         return int(
@@ -239,9 +230,18 @@ cpdef inline prepare_time_millis(object data):
         return data
 
 
+
 cpdef inline prepare_time_micros(object data):
     if isinstance(data, datetime.time):
         return int(data.hour * MCS_PER_HOUR + data.minute * MCS_PER_MINUTE
                     + data.second * MCS_PER_SECOND + data.microsecond)
+    else:
+        return data
+
+
+
+def prepare_nano_time(data):  # pylint: disable = unused-argument
+    if isinstance(data, qutils.time.nanotime.NanoTime):
+        return data.nanoseconds
     else:
         return data

@@ -5,7 +5,7 @@ import jinja2
 
 import cerializer.compiler
 import cerializer.schema_handler
-
+import fastavro
 
 
 '''
@@ -33,7 +33,8 @@ class Cerializer:
         '''
         for schema_path, schema_identifier in iterate_over_schema_roots(self.schema_roots):
             schema = cerializer.schema_handler.parse_schema_from_file(schema_path.decode())
-
+            # TODO REMOVE - for testing purposes only
+            fastavro._schema_common.SCHEMA_DEFS[schema_identifier] = schema
             self.code[schema_identifier] = self.get_compiled_code(schema)
 
 

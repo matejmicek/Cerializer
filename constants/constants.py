@@ -1,4 +1,5 @@
 import datetime
+import os
 
 
 
@@ -33,22 +34,8 @@ DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
 
 
-SCHEMATA = [
-	('tree_schema', 1),
-	('array_schema', 1),
-	('union_schema', 1),
-	('string_schema', 1),
-	('enum_schema', 1),
-	('map_schema', 1),
-	('plain_int', 1),
-	('fixed_schema', 1),
-	('timestamp_schema', 1),
-	('timestamp_schema_micros', 1),
-	('fixed_decimal_schema', 1),
-	('bytes_decimal_schema', 1),
-	('int_date_schema', 1),
-	('string_uuid_schema', 1),
-	('reference_schema', 1),
-	('long_time_micros_schema', 1),
-	('huge_schema', 1),
-]
+def iterate_over_schemata(schema_root):
+	for namespace in os.listdir(schema_root):
+		for schema_name in os.listdir(os.path.join(schema_root, namespace)):
+			for version in os.listdir(os.path.join(schema_root, namespace, schema_name)):
+				yield schema_name, int(version)
