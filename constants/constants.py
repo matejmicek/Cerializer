@@ -34,6 +34,7 @@ DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
 
 SCHEMATA = [
+	('tree_schema', 1),
 	('array_schema', 1),
 	('union_schema', 1),
 	('string_schema', 1),
@@ -47,7 +48,7 @@ SCHEMATA = [
 	('bytes_decimal_schema', 1),
 	('int_date_schema', 1),
 	('string_uuid_schema', 1),
-	('string_uuid_schema', 1),
+	('reference_schema', 1),
 	('long_time_micros_schema', 1),
-	('huge_schema', 1)
+	('huge_schema', 1),
 ]

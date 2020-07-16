@@ -1,4 +1,4 @@
-fastavro==0.23.0
+ql-fastavro==0.22.6
 avro-python3==1.9.2.1
 Cython==0.29.16
 pytest==5.4.1
