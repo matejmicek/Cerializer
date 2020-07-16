@@ -1,1 +1,96 @@
 pytest==5.4.1
+ql-schemachinery==1.6.0
+
+
+#cython: language_level=3
+
+cimport write
+import prepare
+cimport write
+import prepare
+cimport write
+import prepare
+import prepare
+import cython
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+def __invoke():
+
+
+    def serialize(data, output):
+        cdef bytearray buffer = bytearray()
+
+        write.write_string(buffer, data['time'])
+        write.write_string(buffer, data['group'])
+        write.write_string(buffer, data['eee'])
+        write.write_string(buffer, data['lll']['man']['plot']['anakonda'])
+        write.write_string(buffer, data['lll']['man']['plot']['konec'])
+
+        if type(data['lll']['car']["plot"]) is str:
+            write.write_long(buffer, 0)
+            write.write_string(buffer, data['lll']['car']['plot'])
+
+        elif type(data['lll']['car']["plot"]) is dict:
+            write.write_long(buffer, 1)
+            output.write(buffer)
+            buffer = bytearray()
+            serialize_messaging_reference_t_1(data['lll']['car']['plot'], output)
+
+        write.write_string(buffer, data['sss']['man']['plot']['anakonda'])
+        write.write_string(buffer, data['sss']['man']['plot']['konec'])
+
+        if type(data['sss']['car']["plot"]) is str:
+            write.write_long(buffer, 0)
+            write.write_string(buffer, data['sss']['car']['plot'])
+
+        elif type(data['sss']['car']["plot"]) is dict:
+            write.write_long(buffer, 1)
+            output.write(buffer)
+            buffer = bytearray()
+            serialize_messaging_reference_t_1(data['sss']['car']['plot'], output)
+
+        output.write(buffer)
+
+
+
+
+    def serialize_messaging_reference_t_1(data, output):
+        cdef bytearray buffer = bytearray()
+
+
+        if type(data['man']["plot"]) is str:
+            write.write_long(buffer, 0)
+            write.write_string(buffer, data['man']['plot'])
+
+        elif type(data['man']["plot"]) is dict:
+            write.write_long(buffer, 1)
+            output.write(buffer)
+            buffer = bytearray()
+            serialize_messaging_reference_t_1(data['man']['plot'], output)
+
+        output.write(buffer)
+
+
+
+
+
+    def serialize_messaging_reference_t_1(data, output):
+        cdef bytearray buffer = bytearray()
+
+
+        if type(data['man']["plot"]) is str:
+            write.write_long(buffer, 0)
+            write.write_string(buffer, data['man']['plot'])
+
+        elif type(data['man']["plot"]) is dict:
+            write.write_long(buffer, 1)
+            output.write(buffer)
+            buffer = bytearray()
+            serialize_messaging_reference_t_1(data['man']['plot'], output)
+
+        output.write(buffer)
+
+
+    return locals()

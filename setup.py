@@ -1,10 +1,10 @@
+from setuptools import setup, Extension, Command
 from Cython.Build import cythonize
-from setuptools import setup
 
 
 
 setup(
     ext_modules = cythonize(
-            ['cerializer/*.pyx'], annotate=False
+            ['cerializer/*.pyx']
     )
 )

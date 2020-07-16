@@ -19,8 +19,8 @@ class CodeGenerator:
 		self.key_name_generator = name_generator('key')
 		self.schema_database = cerializer.schema_handler.get_subschemata(schema_roots)
 		self.jinja_env = jinja_env
-		self.cycle_starting_nodes = {}
 		self.necessary_defs = []
+		self.cycle_starting_nodes = {}
 		self.init_cycles()
 
 
@@ -166,6 +166,7 @@ class CodeGenerator:
 				self.cycle_starting_nodes[starting_node] =self.render_code(
 					self.schema_database[starting_node]
 				)
+
 
 
 	def render_code(self, schema):
