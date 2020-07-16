@@ -2,12 +2,14 @@ import timeit
 
 import texttable
 import yaml
-import constants.constants
-import datetime
+
 import cerializer.cerializer_handler
+import constants.constants
+
 
 
 NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'time', 'decimal', 'date', 'uuid')
+
 
 
 def benchmark_schema(schema_favro, path_cerializer, count, schema_name, schema_identifier):
@@ -24,6 +26,8 @@ import yaml
 import cerializer.compiler
 # fixes a Timeit NameError 'mappingproxy'
 from types import MappingProxyType as mappingproxy
+fastavro._schema_common.SCHEMA_DEFS['messaging.PlainInt'] = fastavro.parse_schema(yaml.unsafe_load(open('/home/development/work/Cerializer/cerializer/tests/schemata/messaging/plain_int/1/schema.yaml')))
+fastavro._schema_common.SCHEMA_DEFS['messaging.Profit:1'] = fastavro.parse_schema(yaml.unsafe_load(open('/home/development/work/Cerializer/cerializer/tests/schemata/messaging/map_schema/1/schema.yaml')))
 
 
 schema_favro = {schema_favro}
@@ -41,6 +45,7 @@ buff = io.BytesIO()
 
 x = c.Cerializer(['schemata']).code['{schema_identifier}']['serialize']
 	'''
+
 	score_fastavro_serialize = timeit.timeit(
 		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
 		setup = setup,

@@ -1,26 +1,12 @@
 datum = {{ location }}
-try:
-    {{ dict_name }} = <dict?>(datum)
-except TypeError:
-    if len(datum) > 0:
-        {{ write_prefix }}write.write_long({{ buffer_name }}, len(datum))
-        for {{ key_name }}, {{ val_name }} in datum.items():
-            {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
-            {% for t in schema['values'] %}
-            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} {{ key_name }} not in {{ location }}{% else %} type({{ location }}[{{ key_name }}]) is {{ correct_type(t) }}{% endif %}:
-                {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
-                {{ generate_serialization_code(t, val_name)|indent(16) }}
-            {% endfor %}
-    {{ write_prefix }}write.write_long({{ buffer_name }}, 0)
-else:
-    # Faster, special-purpose code where datum is a Python dict.
-    if len({{ dict_name }}) > 0:
-        {{ write_prefix }}write.write_long({{ buffer_name }}, len({{ dict_name }}))
-        for {{ key_name }}, {{ val_name }} in {{ dict_name }}.items():
-            {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
-            {% for t in schema['values'] %}
-            {%  if loop.first %}if{%  else %}elif{% endif %}{% if t == 'null' %} {{ key_name }} not in {{ location }}{% else %} type({{ location }}[{{ key_name }}]) is {{ correct_type(t) }}{% endif %}:
-                {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
-                {{ generate_serialization_code(t, val_name)|indent(16) }}
-            {% endfor %}
-    {{ write_prefix }}write.write_long({{ buffer_name }}, 0)
+
+if len(datum) > 0:
+    {{ write_prefix }}write.write_long({{ buffer_name }}, len(datum))
+    for {{ key_name }}, {{ val_name }} in datum.items():
+        {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
+        {% for t in schema['values'] %}
+        {{ correct_constraint(t, schema['values'], location, key_name, loop.first, val_name) }}
+            {{ write_prefix }}write.write_long({{ buffer_name }}, {{ loop.index0 }})
+            {{ generate_serialization_code(t, val_name)|indent(12) }}
+        {% endfor %}
+{{ write_prefix }}write.write_long({{ buffer_name }}, 0)

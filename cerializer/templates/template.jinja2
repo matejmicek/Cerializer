@@ -7,3 +7,6 @@ cpdef serialize({{ location }}, output):
 {{ cdefs |indent(4, True)}}
 {{ serialization_code|indent(4, True) }}
     output.write({{ buffer_name }})
+
+
+{{ necessary_defs }}

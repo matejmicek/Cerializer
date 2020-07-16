@@ -1,15 +1,15 @@
+import distutils.core
+import hashlib
+import importlib.machinery
+import os.path
+import re
+import sys
+
+import Cython.Build.Dependencies
+import Cython.Build.Inline
 import Cython.Compiler.Main
 import Cython.Utils
-import Cython.Build.Inline
-import Cython.Build.Dependencies
-import sys
-import os.path
-import inspect
 import cython
-import hashlib
-import re
-import distutils.core
-import importlib.machinery
 
 
 
@@ -156,6 +156,11 @@ def cython_inline(
 %(module_body)s
 %(imports)s
 import prepare
+import cython
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
 def __invoke(%(params)s):
 %(func_body)s
     return locals()
@@ -182,7 +187,8 @@ def __invoke(%(params)s):
 				[extension],
 				include_path = ['.'],
 				compiler_directives = cython_compiler_directives,
-				quiet = quiet)
+				quiet = quiet
+			)
 			build_extension.build_temp = os.path.dirname(pyx_file)
 			build_extension.build_lib  = lib_dir
 			build_extension.run()

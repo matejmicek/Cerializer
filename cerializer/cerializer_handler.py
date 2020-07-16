@@ -2,44 +2,16 @@ import os
 
 import jinja2
 
-import cerializer.schema_handler
-import constants.constants
+
 import cerializer.compiler
+import cerializer.schema_handler
+
 
 
 '''
 This module deals with schema handeling. 
 The user should only iteract with the update_schemata method.
 '''
-
-
-def render_code(schema, code_generator):
-    '''
-    Renders code for a given schema into a .pyx file.
-    '''
-    # TODO path needs to be fixed - failing tests
-    location = 'data'
-    serialization_code = code_generator.generate_serialization_code(
-        schema = schema,
-        location = location
-    )
-    cdefs = '\n'.join(code_generator.cdefs)
-
-    template = code_generator.jinja_env.get_template('template.jinja2')
-    rendered_template = template.render(
-        location = location,
-        cdefs = cdefs,
-        buffer_name = code_generator.buffer_name,
-        serialization_code = serialization_code
-    )
-    return rendered_template
-
-
-
-def get_compiled_code(schema, code_generator):
-    code_generator.cdefs = []
-    code = render_code(schema, code_generator)
-    return cerializer.compiler.compile(code)
 
 
 class Cerializer:
@@ -61,7 +33,15 @@ class Cerializer:
         '''
         for schema_path, schema_identifier in iterate_over_schema_roots(self.schema_roots):
             schema = cerializer.schema_handler.parse_schema_from_file(schema_path.decode())
-            self.code[schema_identifier] = get_compiled_code(schema, self.code_generator)
+
+            self.code[schema_identifier] = self.get_compiled_code(schema)
+
+
+    def get_compiled_code(self, schema):
+        self.code_generator.cdefs = []
+        self.code_generator.necessary_defs = []
+        code = self.code_generator.render_code(schema)
+        return cerializer.compiler.compile(code)
 
 
 
