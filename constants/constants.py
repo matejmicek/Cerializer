@@ -35,7 +35,9 @@ DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
 
 def iterate_over_schemata(schema_root):
-	for namespace in os.listdir(schema_root):
-		for schema_name in os.listdir(os.path.join(schema_root, namespace)):
-			for version in os.listdir(os.path.join(schema_root, namespace, schema_name)):
+	for namespace in [f for f in os.listdir(schema_root) if not f.startswith('.')]:
+		for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith('.')]:
+			for version in [
+				f for f in os.listdir(os.path.join(schema_root, namespace, schema_name)) if not f.startswith('.')
+			]:
 				yield schema_name, int(version)

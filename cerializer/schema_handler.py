@@ -176,6 +176,9 @@ class CodeGenerator:
 		'''
 		# TODO path needs to be fixed - failing tests
 		location = 'data'
+		# TODO maybe get rid of this. This is here because if schema name XYZ is defined in this file and also
+		# TODO somewhere else in the schema repo, the definition from this file has to be considered first
+		scan_schema_for_subschemas(schema, self.schema_database)
 		serialization_code = self.generate_serialization_code(
 			schema = schema,
 			location = location
@@ -307,7 +310,7 @@ class CodeGenerator:
 				if value:
 					constraint = f'{full_location} is None'
 				else:
-					constraint = f'"{key}" not in {location}'
+					constraint = f'"{key}" not in {location} or {location}["{key}"] is None'
 			else:
 				constraint = f'type({full_location}) is {self.correct_type(type_)}'
 

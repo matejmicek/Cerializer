@@ -49,12 +49,12 @@ class Cerializer:
 def iterate_over_schema_roots(schema_roots):
     for schema_root in schema_roots:
         schema_root = os.fsencode(schema_root)
-        for namespace in os.listdir(schema_root):
-            for schema_name in os.listdir(os.path.join(schema_root, namespace)):
-                for version in os.listdir(os.path.join(schema_root, namespace, schema_name)):
+        for namespace in [f for f in os.listdir(schema_root) if not f.startswith(b'.')]:
+            for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith(b'.')]:
+                for version in [f for f in os.listdir(os.path.join(schema_root, namespace, schema_name)) if not f.startswith(b'.')]:
                     schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
                     schema_identifier = get_schema_identifier(namespace.decode(), schema_name.decode(), version.decode())
-                    yield (schema_path, schema_identifier)
+                    yield schema_path, schema_identifier
 
 
 

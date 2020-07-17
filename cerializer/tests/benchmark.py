@@ -26,8 +26,8 @@ import yaml
 import cerializer.compiler
 # fixes a Timeit NameError 'mappingproxy'
 from types import MappingProxyType as mappingproxy
-fastavro._schema_common.SCHEMA_DEFS['messaging.PlainInt'] = fastavro.parse_schema(yaml.unsafe_load(open('/home/development/work/Cerializer/cerializer/tests/schemata/messaging/plain_int/1/schema.yaml')))
-fastavro._schema_common.SCHEMA_DEFS['messaging.Profit:1'] = fastavro.parse_schema(yaml.unsafe_load(open('/home/development/work/Cerializer/cerializer/tests/schemata/messaging/map_schema/1/schema.yaml')))
+fastavro._schema_common.SCHEMA_DEFS['messaging.PlainInt'] = fastavro.parse_schema(yaml.unsafe_load(open('/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata/messaging/plain_int/1/schema.yaml')))
+fastavro._schema_common.SCHEMA_DEFS['messaging.Profit:1'] = fastavro.parse_schema(yaml.unsafe_load(open('/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata/messaging/map_schema/1/schema.yaml')))
 
 
 schema_favro = {schema_favro}
@@ -81,14 +81,15 @@ def benchmark():
 	Benchmarking function. Compares FastAvro, Cerializer and Json.
 	In some cases, Json is not able to serialize given data. In such a case it is given an arbitrary score.
 	'''
-	schemata = list(constants.constants.iterate_over_schemata('schemata'))
+	schema_root = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
+	schemata = list(constants.constants.iterate_over_schemata(schema_root))
 	results = []
 
 	for schema, version in schemata:
-		SCHEMA_FILE = f'schemata/messaging/{schema}/{version}/schema.yaml'
+		SCHEMA_FILE = f'{schema_root}/messaging/{schema}/{version}/schema.yaml'
 		SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
 		result = benchmark_schema(
-			path_cerializer = f'schemata/messaging/{schema}/{version}/',
+			path_cerializer = f'{schema_root}/messaging/{schema}/{version}/',
 			schema_favro = SCHEMA_FAVRO,
 			count = 100000,
 			schema_name = schema,

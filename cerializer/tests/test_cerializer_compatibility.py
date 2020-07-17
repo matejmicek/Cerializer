@@ -13,7 +13,7 @@ import schemachinery.codec.avro_schemata
 
 
 
-SCHEMA_ROOT = '/home/development/root_schemata'
+SCHEMA_ROOT = '/Users/matejmicek/PycharmProjects/schema_root'
 
 @pytest.mark.parametrize(
 	'schema_name,schema_version',
@@ -39,8 +39,6 @@ def test_serialization_compatibility(schema_name, schema_version):
 		assert True
 
 
-
-SCHEMA_ROOT = '/home/development/root_schemata'
 
 @pytest.mark.parametrize(
 	'schema_name,schema_version',
