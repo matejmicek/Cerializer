@@ -42,6 +42,20 @@ def test_serialization_compatibility(schema_name, schema_version):
 
 SCHEMA_ROOT = '/home/development/root_schemata'
 
+SCHEMA_ROOTS = ['/Users/matejmicek/PycharmProjects/schema_root']
+
+
+
+def iterate_over_schemata(schema_roots):
+	for schema_root in schema_roots:
+		schema_root = os.fsencode(schema_root)
+		for namespace in os.listdir(schema_root):
+			for schema_name in os.listdir(os.path.join(schema_root, namespace)):
+				for version in os.listdir(os.path.join(schema_root, namespace, schema_name)):
+					yield schema_name.decode(), int(version)
+
+
+
 @pytest.mark.parametrize(
 	'schema_name,schema_version',
 	constants.constants.iterate_over_schemata(SCHEMA_ROOT)
