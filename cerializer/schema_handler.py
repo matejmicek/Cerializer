@@ -105,6 +105,10 @@ class CodeGenerator:
 		'''
 		Return union serialization string.
 		'''
+		if len([item for item in schema if (type(item) is dict and item.get('type') == 'array')]) > 1:
+			# this is documented in task CL-132
+			raise NotImplementedError('One of your schemas contains a union of more than one array types. This is not yet implemented.')
+
 		if is_from_array:
 			type_ = schema
 			name = None
@@ -146,14 +150,14 @@ class CodeGenerator:
 		dict_name = next(self.dict_name_generator)
 		self.cdefs.append(get_cdef('dict', dict_name))
 		template = self.jinja_env.get_template('map.jinja2')
+		values = schema['values']
 		return template.render(
-			dict_name = dict_name,
 			location = location,
 			buffer_name = self.buffer_name,
-			schema = schema,
-			generate_serialization_code = self.generate_serialization_code,
+			values = values,
 			key_name = next(self.key_name_generator),
-			val_name = next(self.val_name_generator)
+			val_name = next(self.val_name_generator),
+			union_part = self.generate_serialization_code
 		)
 
 
@@ -238,12 +242,6 @@ class CodeGenerator:
 			return self.generate_serialization_code(type_, new_location)
 		elif type(type_) is list:
 			return self.get_union_serialization(schema, location)
-
-		# TODO needs to be fixed
-		elif type(type_) is type(MappingProxyType({'a':'b'})):
-			name = schema['name']
-			new_location = f'{location}[\'{name}\']'
-			return self.generate_serialization_code(dict(type_), new_location)
 
 		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
 			name = schema.get('name')

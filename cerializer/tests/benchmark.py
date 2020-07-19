@@ -10,6 +10,8 @@ import constants.constants
 
 NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'time', 'decimal', 'date', 'uuid')
 
+SCHEMA_ROOT = '/home/development/root_schemata'
+SCHEMA_ROOT = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
 
 def benchmark_schema(schema_favro, path_cerializer, count, schema_name, schema_identifier):
@@ -26,8 +28,6 @@ import yaml
 import cerializer.compiler
 # fixes a Timeit NameError 'mappingproxy'
 from types import MappingProxyType as mappingproxy
-fastavro._schema_common.SCHEMA_DEFS['messaging.PlainInt'] = fastavro.parse_schema(yaml.unsafe_load(open('/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata/messaging/plain_int/1/schema.yaml')))
-fastavro._schema_common.SCHEMA_DEFS['messaging.Profit:1'] = fastavro.parse_schema(yaml.unsafe_load(open('/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata/messaging/map_schema/1/schema.yaml')))
 
 
 schema_favro = {schema_favro}
@@ -43,28 +43,28 @@ import json
 
 buff = io.BytesIO()
 
-x = c.Cerializer(['schemata']).code['{schema_identifier}']['serialize']
+x = c.Cerializer(['{SCHEMA_ROOT}']).code['{schema_identifier}']['serialize']
 	'''
-
-	score_fastavro_serialize = timeit.timeit(
-		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
-		setup = setup,
-		number = count
-	)
 
 	score_string_cerializer = timeit.timeit(
 		stmt = 'x(data, buff)',
 		setup = setup,
 		number = count
 	)
+	score_fastavro_serialize = timeit.timeit(
+		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
+		setup = setup,
+		number = count
+	)
 
-	if not any([i in schema_name for i in NOT_SUPPORTED_JSON]):
+	try:
 		score_json_serialize = timeit.timeit(
 			stmt = 'json.dumps(data)',
 			setup = setup,
 			number = count
 		)
-	else:
+	except:
+		print(f'Schema = {schema_name} has elements not supported by JSON.')
 		score_json_serialize = 666*score_string_cerializer
 
 	return (
@@ -81,15 +81,13 @@ def benchmark():
 	Benchmarking function. Compares FastAvro, Cerializer and Json.
 	In some cases, Json is not able to serialize given data. In such a case it is given an arbitrary score.
 	'''
-	schema_root = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
-	schemata = list(constants.constants.iterate_over_schemata(schema_root))
+	schemata = list(constants.constants.iterate_over_schemata(SCHEMA_ROOT))
 	results = []
-
 	for schema, version in schemata:
-		SCHEMA_FILE = f'{schema_root}/messaging/{schema}/{version}/schema.yaml'
+		SCHEMA_FILE = f'{SCHEMA_ROOT}/messaging/{schema}/{version}/schema.yaml'
 		SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
 		result = benchmark_schema(
-			path_cerializer = f'{schema_root}/messaging/{schema}/{version}/',
+			path_cerializer = f'{SCHEMA_ROOT}/messaging/{schema}/{version}/',
 			schema_favro = SCHEMA_FAVRO,
 			count = 100000,
 			schema_name = schema,
