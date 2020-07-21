@@ -1,3 +1,4 @@
+import pprint
 from types import MappingProxyType
 
 import fastavro
@@ -19,8 +20,8 @@ class CodeGenerator:
 		self.key_name_generator = name_generator('key')
 		self.schema_database = cerializer.schema_handler.get_subschemata(schema_roots)
 		self.jinja_env = jinja_env
-		self.cycle_starting_nodes = {}
 		self.necessary_defs = []
+		self.cycle_starting_nodes = {}
 		self.init_cycles()
 
 
@@ -55,7 +56,7 @@ class CodeGenerator:
 		'''
 		if type_ == 'null':
 			return f'write.write_null({self.buffer_name})'
-		if type_ in self.schema_database:
+		if type_ in self.schema_database and type_ not in constants.constants.BASIC_TYPES:
 			return self.generate_serialization_code(self.schema_database[type_], location)
 		return f'write.write_{type_}({self.buffer_name}, {location})'
 
@@ -104,6 +105,10 @@ class CodeGenerator:
 		'''
 		Return union serialization string.
 		'''
+		if len([item for item in schema if (type(item) is dict and item.get('type') == 'array')]) > 1:
+			# this is documented in task CL-132
+			raise NotImplementedError('One of your schemas contains a union of more than one array types. This is not yet implemented.')
+
 		if is_from_array:
 			type_ = schema
 			name = None
@@ -145,14 +150,14 @@ class CodeGenerator:
 		dict_name = next(self.dict_name_generator)
 		self.cdefs.append(get_cdef('dict', dict_name))
 		template = self.jinja_env.get_template('map.jinja2')
+		values = schema['values']
 		return template.render(
-			dict_name = dict_name,
 			location = location,
 			buffer_name = self.buffer_name,
-			schema = schema,
-			generate_serialization_code = self.generate_serialization_code,
+			values = values,
 			key_name = next(self.key_name_generator),
-			val_name = next(self.val_name_generator)
+			val_name = next(self.val_name_generator),
+			union_part = self.generate_serialization_code
 		)
 
 
@@ -168,12 +173,16 @@ class CodeGenerator:
 				)
 
 
+
 	def render_code(self, schema):
 		'''
 		Renders code for a given schema into a .pyx file.
 		'''
 		# TODO path needs to be fixed - failing tests
 		location = 'data'
+		# TODO maybe get rid of this. This is here because if schema name XYZ is defined in this file and also
+		# TODO somewhere else in the schema repo, the definition from this file has to be considered first
+		scan_schema_for_subschemas(schema, self.schema_database)
 		serialization_code = self.generate_serialization_code(
 			schema = schema,
 			location = location
@@ -198,7 +207,7 @@ class CodeGenerator:
 		self.jinja_env.globals['correct_type'] = self.correct_type
 		self.jinja_env.globals['correct_constraint'] = self.correct_constraint
 		if type(schema) is str:
-			if schema in self.cycle_starting_nodes:
+			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
 				return self.handel_cycle(schema, location)
 			return self.get_serialization_function(schema, location)
 		if type(schema) is list:
@@ -234,11 +243,11 @@ class CodeGenerator:
 		elif type(type_) is list:
 			return self.get_union_serialization(schema, location)
 
-		# TODO needs to be fixed
-		elif type(type_) is type(MappingProxyType({'a':'b'})):
-			name = schema['name']
-			new_location = f'{location}[\'{name}\']'
-			return self.generate_serialization_code(dict(type_), new_location)
+		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
+			name = schema.get('name')
+			if name:
+				location = f'{location}[\'{name}\']'
+			return self.get_serialization_function(type_, location)
 
 		elif type(type_) is str and type_ in self.schema_database:
 			if type_ in self.cycle_starting_nodes:
@@ -246,11 +255,6 @@ class CodeGenerator:
 			name = schema['name']
 			new_location = f'{location}[\'{name}\']'
 			return self.generate_serialization_code(self.schema_database[type_], new_location)
-		elif type_ in constants.constants.BASIC_TYPES:
-			name = schema.get('name')
-			if name:
-				location = f'{location}[\'{name}\']'
-			return self.get_serialization_function(type_, location)
 
 
 	def handel_cycle(self, schema, location):
@@ -304,7 +308,7 @@ class CodeGenerator:
 				if value:
 					constraint = f'{full_location} is None'
 				else:
-					constraint = f'"{key}" not in {location}'
+					constraint = f'"{key}" not in {location} or {location}["{key}"] is None'
 			else:
 				constraint = f'type({full_location}) is {self.correct_type(type_)}'
 
@@ -350,6 +354,7 @@ def parse_schema_from_file(path):
 			parsed =  fastavro.parse_schema(json_object)
 			return parsed
 		except fastavro.schema.UnknownType as e:
+			# we ignore missing schema errors since we are going to fill them in later
 			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
 
 
@@ -363,7 +368,8 @@ def get_subschemata(schema_roots):
 	schema_database = {}
 	for schema_path, schema_identifier in cerializer.cerializer_handler.iterate_over_schema_roots(schema_roots):
 		schema = parse_schema_from_file(schema_path)
-		schema_database[schema_identifier] = schema
+		if '.' in schema_identifier:
+			schema_database[schema_identifier] = schema
 		scan_schema_for_subschemas(schema, schema_database)
 	return schema_database
 
@@ -372,7 +378,7 @@ def get_subschemata(schema_roots):
 def scan_schema_for_subschemas(schema, schema_database):
 	if type(schema) is dict:
 		name = schema.get('name')
-		if name:
+		if name and '.' in name:
 			schema_database[name] = schema
 		for _, subschema in schema.items():
 			scan_schema_for_subschemas(subschema, schema_database)

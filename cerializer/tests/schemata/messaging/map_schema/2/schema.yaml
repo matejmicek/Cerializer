@@ -1,0 +1,10 @@
+name: Profit:1
+namespace: messaging
+type: record
+fields:
+
+
+- name: meta
+  type:
+    type: map
+    values: string
