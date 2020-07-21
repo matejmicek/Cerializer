@@ -40,7 +40,7 @@ class Cerializer:
 
     def get_compiled_code(self, schema):
         self.code_generator.cdefs = []
-        self.code_generator.necessary_defs = []
+        self.code_generator.necessary_defs = set()
         code = self.code_generator.render_code(schema)
         return cerializer.compiler.compile(code)
 

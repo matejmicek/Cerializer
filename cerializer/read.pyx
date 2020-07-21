@@ -1,5 +1,9 @@
 import decimal
-
+import qutils.time.nanotime
+import datetime
+import pytz
+import uuid
+from decimal import Context
 
 ctypedef int int32
 ctypedef unsigned int uint32
@@ -10,15 +14,13 @@ cdef union double_ulong64:
 	ulong64 n
 
 
-decimal_context = decimal.Context()
 
-
-cdef inline read_null(fo):
+cpdef inline read_null(fo):
 	"""null is written as zero bytes."""
 	return None
 
 
-cdef inline read_boolean(fo):
+cpdef inline read_boolean(fo):
 	"""A boolean is written as a single byte whose value is either 0 (false) or
 	1 (true).
 	"""
@@ -30,12 +32,17 @@ cdef inline read_boolean(fo):
 	return ch_temp != 0
 
 
-cdef long64 read_int(fo) except? -1:
+cpdef inline long64 read_long(fo) except? -1:
+	return read_int(fo)
+
+
+cpdef inline long64 read_int(fo) except? -1:
 	"""int and long values are written using variable-length, zig-zag
 	coding."""
 	cdef ulong64 b
 	cdef ulong64 n
 	cdef int32 shift
+
 	cdef bytes c = fo.read(1)
 
 	# We do EOF checking only here, since most reader start here
@@ -60,7 +67,7 @@ cdef union float_uint32:
 	uint32 n
 
 
-cdef read_float(fo):
+cpdef inline read_float(fo):
 	"""A float is written as 4 bytes.
 
 	The float is converted into a 32-bit integer using a method equivalent to
@@ -83,7 +90,7 @@ cdef union double_ulong64:
 	ulong64 n
 
 
-cdef read_double(fo):
+cpdef inline read_double(fo):
 	"""A double is written as 8 bytes.
 
 	The double is converted into a 64-bit integer using a method equivalent to
@@ -106,20 +113,82 @@ cdef read_double(fo):
 
 
 
-cdef read_bytes(fo):
+cpdef inline read_bytes(fo):
 	"""Bytes are encoded as a long followed by that many bytes of data."""
 	cdef long64 size = read_int(fo)
 	return fo.read(<long>size)
 
 
-cdef inline unicode read_utf8(fo):
+cpdef inline unicode read_string(fo):
 	"""A string is encoded as a long followed by that many bytes of UTF-8
 	encoded character data.
 	"""
 	return read_bytes(fo).decode('utf-8')
 
 
-cdef inline read_fixed(fo, writer_schema):
+cpdef inline read_fixed(fo, writer_schema):
 	"""Fixed instances are encoded using the number of bytes declared in the
 	schema."""
 	return fo.read(writer_schema['size'])
+
+
+
+cpdef inline read_timestamp_millis(data):
+	return parse_timestamp(data, float(1000))
+
+
+
+cpdef inline read_timestamp_micros(data):
+	return parse_timestamp(data, float(1000000))
+
+
+cpdef inline read_date(data):
+	return datetime.date.fromordinal(data + datetime.date(1970, 1, 1).toordinal())
+
+
+
+cpdef inline read_uuid(data):
+	return uuid.UUID(data)
+
+
+
+cpdef inline read_decimal(data, schema):
+	scale = schema.get('scale', 0)
+	precision = schema['precision']
+	unscaled_datum = int.from_bytes(data, byteorder = 'big', signed = True)
+	decimal_context = Context()
+	decimal_context.prec = precision
+	return decimal_context.create_decimal(unscaled_datum). \
+		scaleb(-scale, decimal_context)
+
+
+
+cpdef inline read_time_millis(data):
+	h = int(data / 60 * 60 * 1000)
+	m = int(data / 60 * 1000) % 60
+	s = int(data / 1000) % 60
+	mls = int(data % 1000) * 1000
+	return datetime.time(h, m, s, mls)
+
+
+
+cpdef inline read_time_micros(data):
+	h = int(data / (60 * 60 * 1000000))
+	m = int(data / (60 * 1000000)) % 60
+	s = int(data / 1000000) % 60
+	mcs = data % 1000000
+	return datetime.time(h, m, s, mcs)
+
+
+cpdef inline parse_timestamp(data, resolution):
+	return datetime.datetime(1970, 1, 1, tzinfo = pytz.utc) + datetime.timedelta(seconds = data / resolution)
+
+
+
+cpdef read_nano_time(data):
+	return qutils.time.nanotime.NanoTime(data)
+
+
+
+cpdef read_nano_time_delta(data):
+	return qutils.time.NanoTimeDelta(data)

@@ -14,7 +14,7 @@ SCHEMA_ROOT = '/home/development/root_schemata'
 SCHEMA_ROOT = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
 
-def benchmark_schema(schema_favro, path_cerializer, count, schema_name, schema_identifier):
+def benchmark_schema_serialize(schema_favro, path_cerializer, count, schema_name, schema_identifier):
 	'''
 	Helper function. This should not be used on its own. Use benchmark() instead.
 	'''
@@ -75,6 +75,56 @@ x = c.Cerializer(['{SCHEMA_ROOT}']).code['{schema_identifier}']['serialize']
 
 
 
+def benchmark_schema_deserialize(schema_favro, path_cerializer, count, schema_name, schema_identifier):
+	'''
+	Helper function. This should not be used on its own. Use benchmark() instead.
+	'''
+	setup = f'''
+import benchmark
+import fastavro
+import json
+import io
+import yaml
+import cerializer.compiler
+# fixes a Timeit NameError 'mappingproxy'
+from types import MappingProxyType as mappingproxy
+
+
+schema_favro = {schema_favro}
+data = yaml.unsafe_load(open('{path_cerializer}' + 'example.yaml'))
+parsed_schema = fastavro.parse_schema(schema_favro)
+serialized_data = io.BytesIO()
+
+fastavro.schemaless_writer(serialized_data, parsed_schema, data)
+serialized_data.seek(0)
+import cerializer.cerializer_handler as c
+import datetime
+from decimal import Decimal
+from uuid import UUID
+
+x = c.Cerializer(['{SCHEMA_ROOT}']).code['{schema_identifier}']['deserialize']
+	'''
+
+	score_string_cerializer = timeit.timeit(
+		stmt = 'serialized_data.seek(0)\n'
+			   'y = x(serialized_data)',
+		setup = setup,
+		number = count
+	)
+	score_fastavro_serialize = timeit.timeit(
+		stmt = 'serialized_data.seek(0)\n'
+			   'y = fastavro.schemaless_reader(serialized_data, parsed_schema)',
+		setup = setup,
+		number = count
+	)
+
+	return (
+		score_string_cerializer,
+		score_fastavro_serialize,
+		6666
+	)
+
+
 
 def benchmark():
 	'''
@@ -86,7 +136,7 @@ def benchmark():
 	for schema, version in schemata:
 		SCHEMA_FILE = f'{SCHEMA_ROOT}/messaging/{schema}/{version}/schema.yaml'
 		SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
-		result = benchmark_schema(
+		result = benchmark_schema_deserialize(
 			path_cerializer = f'{SCHEMA_ROOT}/messaging/{schema}/{version}/',
 			schema_favro = SCHEMA_FAVRO,
 			count = 100000,
