@@ -1,10 +1,3 @@
-import decimal
-import qutils.time.nanotime
-import datetime
-import pytz
-import uuid
-from decimal import Context
-
 ctypedef int int32
 ctypedef unsigned int uint32
 ctypedef unsigned long long ulong64
@@ -130,65 +123,3 @@ cpdef inline read_fixed(fo, writer_schema):
 	"""Fixed instances are encoded using the number of bytes declared in the
 	schema."""
 	return fo.read(writer_schema['size'])
-
-
-
-cpdef inline read_timestamp_millis(data):
-	return parse_timestamp(data, float(1000))
-
-
-
-cpdef inline read_timestamp_micros(data):
-	return parse_timestamp(data, float(1000000))
-
-
-cpdef inline read_date(data):
-	return datetime.date.fromordinal(data + datetime.date(1970, 1, 1).toordinal())
-
-
-
-cpdef inline read_uuid(data):
-	return uuid.UUID(data)
-
-
-
-cpdef inline read_decimal(data, schema):
-	scale = schema.get('scale', 0)
-	precision = schema['precision']
-	unscaled_datum = int.from_bytes(data, byteorder = 'big', signed = True)
-	decimal_context = Context()
-	decimal_context.prec = precision
-	return decimal_context.create_decimal(unscaled_datum). \
-		scaleb(-scale, decimal_context)
-
-
-
-cpdef inline read_time_millis(data):
-	h = int(data / 60 * 60 * 1000)
-	m = int(data / 60 * 1000) % 60
-	s = int(data / 1000) % 60
-	mls = int(data % 1000) * 1000
-	return datetime.time(h, m, s, mls)
-
-
-
-cpdef inline read_time_micros(data):
-	h = int(data / (60 * 60 * 1000000))
-	m = int(data / (60 * 1000000)) % 60
-	s = int(data / 1000000) % 60
-	mcs = data % 1000000
-	return datetime.time(h, m, s, mcs)
-
-
-cpdef inline parse_timestamp(data, resolution):
-	return datetime.datetime(1970, 1, 1, tzinfo = pytz.utc) + datetime.timedelta(seconds = data / resolution)
-
-
-
-cpdef read_nano_time(data):
-	return qutils.time.nanotime.NanoTime(data)
-
-
-
-cpdef read_nano_time_delta(data):
-	return qutils.time.NanoTimeDelta(data)

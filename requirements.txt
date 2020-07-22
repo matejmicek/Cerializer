@@ -1,9 +1,6 @@
 ql-fastavro==0.22.6
-avro-python3==1.9.2.1
 Cython==0.29.16
-pytest==5.4.1
 PyYAML==5.3.1
 setuptools==46.0.0
-texttable==1.6.2
 Jinja2==2.11.2
 pytz==2020.1
