@@ -1,3 +1,5 @@
+# pylint: disable=protected-access
+
 import distutils.core
 import hashlib
 import importlib.machinery
@@ -12,27 +14,23 @@ import Cython.Utils
 import cython
 
 
-
 def _create_context(cython_include_dirs):
 	return Cython.Compiler.Main.Context(list(cython_include_dirs), Cython.Compiler.Main.default_options)
+
 
 _cython_inline_default_context = _create_context(('.',))
 _cython_inline_cache = {}
 
 
-
-
-def compile(code, *args, **kwds):
+def compile_code(code, *args, **kwds):
 	return cython_inline(code, force = True, language_level = 3, *args, **kwds)
-
 
 
 def load_dynamic(name, module_path):
 	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module()
 
 
-
-def safe_type(arg, context=None):
+def safe_type(arg, context = None):
 	py_type = type(arg)
 	if py_type is int:
 		return 'long'
@@ -48,7 +46,7 @@ def safe_type(arg, context=None):
 		for base_type in py_type.__mro__:
 			if base_type.__module__ in ('__builtin__', 'builtins'):
 				return 'object'
-			module = context.find_module(base_type.__module__, need_pxd=False)
+			module = context.find_module(base_type.__module__, need_pxd = False)
 			if module:
 				entry = module.lookup(base_type.__name__)
 				if entry is not None and entry.is_type:
@@ -56,21 +54,20 @@ def safe_type(arg, context=None):
 		return 'object'
 
 
-
 def cython_inline(
 	complete_code,
-	get_type=safe_type,
-	lib_dir=os.path.join(Cython.Utils.get_cython_cache_dir(), 'inline'),
-	force=False,
-	quiet=False,
-	language_level=None,
+	get_type = safe_type,
+	lib_dir = os.path.join(Cython.Utils.get_cython_cache_dir(), 'inline'),
+	force = False,
+	quiet = False,
+	language_level = None,
 	**kwds
 ):
 
 	ctx = _cython_inline_default_context
 	imports = []
 
-	#method to compensate for a bug in timeit. Necesssary for benchmarking
+	'''#method to compensate for a bug in timeit. Necesssary for benchmarking
 	#TODO delete
 	def remove_indent(code):
 		retarded_indent = [line.startswith('    ') for line in code.split('\n')]
@@ -78,7 +75,7 @@ def cython_inline(
 			code = '\n'.join([line[4:] for line in code.split('\n')])
 		return code
 
-	complete_code = remove_indent(complete_code)
+	complete_code = remove_indent(complete_code)'''
 
 	code_buffer = []
 	for line in complete_code.split('\n'):
@@ -109,11 +106,9 @@ def cython_inline(
 	orig_code = code
 	code, literals = Cython.Build.Dependencies.strip_string_literals(code)
 	code = Cython.Build.Inline.strip_common_indent(code)
-	try:
-		_cython_inline_cache[orig_code] = _unbound_symbols = Cython.Build.Inline.unbound_symbols(code)
-		Cython.Build.Inline._populate_unbound(kwds, _unbound_symbols, None, None)
-	except AssertionError:
-		print("Could not parse code as a string (to extract unbound symbols).")
+
+	_cython_inline_cache[orig_code] = _unbound_symbols = Cython.Build.Inline.unbound_symbols(code)
+	Cython.Build.Inline._populate_unbound(kwds, _unbound_symbols, None, None)
 
 	cython_compiler_directives = dict({})
 	if language_level is not None:
@@ -126,7 +121,7 @@ def cython_inline(
 	arg_names = sorted(kwds)
 	arg_sigs = tuple([(get_type(kwds[arg], ctx), arg) for arg in arg_names])
 	key = orig_code, arg_sigs, sys.version_info, sys.executable, language_level, Cython.__version__
-	module_name = "_cython_inline_" + hashlib.md5(str(key).encode('utf-8')).hexdigest()
+	module_name = '_cython_inline_' + hashlib.md5(str(key).encode('utf-8')).hexdigest()
 
 	if module_name in sys.modules:
 		module = sys.modules[module_name]
@@ -145,17 +140,16 @@ def cython_inline(
 			cflags = []
 			c_include_dirs = []
 			qualified = re.compile(r'([.\w]+)[.]')
-			for type, _ in arg_sigs:
-				m = qualified.match(type)
+			for type_, _ in arg_sigs:
+				m = qualified.match(type_)
 				if m:
 					imports.append('\ncimport %s' % m.groups()[0])
 			module_body, func_body = Cython.Build.Inline.extract_func_code(code)
 			params = ', '.join(['%s %s' % a for a in arg_sigs])
-			module_code = """
+			module_code = '''
 #cython: language_level=3
 %(module_body)s
 %(imports)s
-import prepare
 import cython
 
 @cython.boundscheck(False)
@@ -164,10 +158,12 @@ import cython
 def __invoke(%(params)s):
 %(func_body)s
     return locals()
-			""" % {'imports': '\n'.join(imports),
-				   'module_body': module_body,
-				   'params': params,
-				   'func_body': func_body }
+			''' % {
+				'imports': '\n'.join(imports),
+				'module_body': module_body,
+				'params': params,
+				'func_body': func_body,
+			}
 			for key, value in literals.items():
 				module_code = module_code.replace(key, value)
 			pyx_file = os.path.join(lib_dir, module_name + '.pyx')
@@ -180,17 +176,18 @@ def __invoke(%(params)s):
 				name = module_name,
 				sources = [pyx_file],
 				include_dirs = c_include_dirs,
-				extra_compile_args = cflags)
+				extra_compile_args = cflags,
+			)
 			if build_extension is None:
 				build_extension = Cython.Build.Inline._get_build_extension()
 			build_extension.extensions = Cython.Build.Dependencies.cythonize(
 				[extension],
 				include_path = ['.'],
 				compiler_directives = cython_compiler_directives,
-				quiet = quiet
+				quiet = quiet,
 			)
 			build_extension.build_temp = os.path.dirname(pyx_file)
-			build_extension.build_lib  = lib_dir
+			build_extension.build_lib = lib_dir
 			build_extension.run()
 
 		module = load_dynamic(module_name, module_path)

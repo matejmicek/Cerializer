@@ -1,15 +1,22 @@
 #cython: language_level=3
-import constants.constants
 from libc.time cimport tm, mktime
 from cpython.int cimport PyInt_AS_LONG
 from cpython.tuple cimport PyTuple_GET_ITEM
-import datetime
 import os
 from pytz import utc
 import decimal
-import uuid
 
 import qutils.time.nanotime
+
+
+
+import qutils.time.nanotime
+import datetime
+import pytz
+import uuid
+from decimal import Context
+
+
 
 '''
 This module deals with preparation of logical types.
@@ -23,25 +30,26 @@ ctypedef long long long64
 cdef is_windows = os.name == 'nt'
 cdef has_timestamp_fn = hasattr(datetime.datetime, 'timestamp')
 
-cdef long64 MCS_PER_SECOND = constants.constants.MCS_PER_SECOND
-cdef long64 MCS_PER_MINUTE = constants.constants.MCS_PER_MINUTE
-cdef long64 MCS_PER_HOUR = constants.constants.MCS_PER_HOUR
+cdef long64 MCS_PER_SECOND = 1000000
+cdef long64 MCS_PER_MINUTE = 60000000
+cdef long64 MCS_PER_HOUR = 3600000000
 
-cdef long64 MLS_PER_SECOND = constants.constants.MLS_PER_SECOND
-cdef long64 MLS_PER_MINUTE = constants.constants.MLS_PER_MINUTE
-cdef long64 MLS_PER_HOUR = constants.constants.MLS_PER_HOUR
+cdef long64 MLS_PER_SECOND = 1000
+cdef long64 MLS_PER_MINUTE = 60000
+cdef long64 MLS_PER_HOUR = 3600000
 
 
 epoch = datetime.datetime(1970, 1, 1, tzinfo=utc)
 epoch_naive = datetime.datetime(1970, 1, 1)
+DAYS_SHIFT = datetime.date(1970, 1, 1).toordinal()
 
 
 
-cpdef inline mk_bits(bits):
+cdef inline mk_bits(bits):
 	return bytes([bits & 0xff])
 
 
-cpdef inline prepare_timestamp_millis(object data):
+cdef inline prepare_timestamp_millis(object data):
 	cdef object tt
 	cdef tm time_tuple
 	if isinstance(data, datetime.datetime):
@@ -79,7 +87,7 @@ cpdef inline prepare_timestamp_millis(object data):
 		return data
 
 
-cpdef inline prepare_timestamp_micros(object data):
+cdef inline prepare_timestamp_micros(object data):
 	cdef object tt
 	cdef tm time_tuple
 	if isinstance(data, datetime.datetime):
@@ -117,16 +125,16 @@ cpdef inline prepare_timestamp_micros(object data):
 		return data
 
 
-cpdef inline prepare_date(object data):
+cdef inline prepare_date(object data):
 	if isinstance(data, datetime.date):
-		return data.toordinal() - constants.constants.DAYS_SHIFT
+		return data.toordinal() - DAYS_SHIFT
 	elif isinstance(data, str):
-		return datetime.datetime.strptime(data, "%Y-%m-%d").toordinal() - constants.constants.DAYS_SHIFT
+		return datetime.datetime.strptime(data, "%Y-%m-%d").toordinal() - DAYS_SHIFT
 	else:
 		return data
 
 
-cpdef inline prepare_bytes_decimal(object data, schema):
+cdef inline prepare_bytes_decimal(object data, schema):
 	"""Convert decimal.Decimal to bytes"""
 	if not isinstance(data, decimal.Decimal):
 		return data
@@ -155,7 +163,7 @@ cpdef inline prepare_bytes_decimal(object data, schema):
 
 
 
-cpdef inline prepare_fixed_decimal(object data, schema):
+cdef inline prepare_fixed_decimal(object data, schema):
 	cdef bytearray tmp
 	if not isinstance(data, decimal.Decimal):
 		return data
@@ -213,7 +221,7 @@ cpdef inline prepare_fixed_decimal(object data, schema):
 	return tmp
 
 
-cpdef inline prepare_uuid(object data):
+cdef inline prepare_uuid(object data):
 	if isinstance(data, uuid.UUID):
 		return str(data)
 	else:
@@ -221,7 +229,7 @@ cpdef inline prepare_uuid(object data):
 
 
 
-cpdef inline prepare_time_millis(object data):
+cdef inline prepare_time_millis(object data):
 	if isinstance(data, datetime.time):
 		return int(
 			data.hour * MLS_PER_HOUR + data.minute * MLS_PER_MINUTE
@@ -231,7 +239,7 @@ cpdef inline prepare_time_millis(object data):
 
 
 
-cpdef inline prepare_time_micros(object data):
+cdef inline prepare_time_micros(object data):
 	if isinstance(data, datetime.time):
 		return int(data.hour * MCS_PER_HOUR + data.minute * MCS_PER_MINUTE
 					+ data.second * MCS_PER_SECOND + data.microsecond)
@@ -240,7 +248,7 @@ cpdef inline prepare_time_micros(object data):
 
 
 
-def prepare_nano_time(data):
+cdef prepare_nano_time(data):
 	if isinstance(data, qutils.time.nanotime.NanoTime):
 		return data.nanoseconds
 	else:
@@ -248,8 +256,54 @@ def prepare_nano_time(data):
 
 
 
-def prepare_nano_time_delta(data):
+cdef prepare_nano_time_delta(data):
 	if isinstance(data, qutils.time.NanoTimeDelta):
 		return data.nanoseconds
 	else:
 		return data
+
+
+
+cdef inline read_timestamp_millis(data):
+	return parse_timestamp(data, float(1000))
+
+cdef inline read_timestamp_micros(data):
+	return parse_timestamp(data, float(1000000))
+
+cdef inline read_date(data):
+	return datetime.date.fromordinal(data + datetime.date(1970, 1, 1).toordinal())
+
+cdef inline read_uuid(data):
+	return uuid.UUID(data)
+
+cdef inline read_decimal(data, schema):
+	scale = schema.get('scale', 0)
+	precision = schema['precision']
+	unscaled_datum = int.from_bytes(data, byteorder = 'big', signed = True)
+	decimal_context = Context()
+	decimal_context.prec = precision
+	return decimal_context.create_decimal(unscaled_datum). \
+		scaleb(-scale, decimal_context)
+
+cdef inline read_time_millis(data):
+	h = int(data / 60 * 60 * 1000)
+	m = int(data / 60 * 1000) % 60
+	s = int(data / 1000) % 60
+	mls = int(data % 1000) * 1000
+	return datetime.time(h, m, s, mls)
+
+cdef inline read_time_micros(data):
+	h = int(data / (60 * 60 * 1000000))
+	m = int(data / (60 * 1000000)) % 60
+	s = int(data / 1000000) % 60
+	mcs = data % 1000000
+	return datetime.time(h, m, s, mcs)
+
+cdef inline parse_timestamp(data, resolution):
+	return datetime.datetime(1970, 1, 1, tzinfo = pytz.utc) + datetime.timedelta(seconds = data / resolution)
+
+cdef read_nano_time(data):
+	return qutils.time.nanotime.NanoTime(data)
+
+cdef read_nano_time_delta(data):
+	return qutils.time.NanoTimeDelta(data)
