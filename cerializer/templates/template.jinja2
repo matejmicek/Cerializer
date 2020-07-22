@@ -1,12 +1,19 @@
 cimport write
+import read
 import prepare
 
 
-cpdef serialize({{ location }}, output):
+def serialize({{ location }}, output):
     cdef bytearray {{ buffer_name }} = bytearray()
 {{ cdefs |indent(4, True)}}
 {{ serialization_code|indent(4, True) }}
     output.write({{ buffer_name }})
+
+
+def deserialize(fo):
+{{ cdefs |indent(4, True) }}
+{{ deserialization_code|indent(4, True) }}
+    return {{ location }}
 
 
 {{ necessary_defs }}

@@ -41,3 +41,7 @@ def iterate_over_schemata(schema_root):
 				f for f in os.listdir(os.path.join(schema_root, namespace, schema_name)) if not f.startswith('.')
 			]:
 				yield schema_name, int(version)
+
+
+MODE_SERIALIZE = 'serialize'
+MODE_DESERIALIZE = 'deserialize'

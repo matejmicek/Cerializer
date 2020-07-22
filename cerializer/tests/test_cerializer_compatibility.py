@@ -13,7 +13,8 @@ import schemachinery.codec.avro_schemata
 
 
 
-SCHEMA_ROOT = ''
+SCHEMA_ROOT = '/home/development/work/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT = '/home/development/root_schemata'
 
 
 
@@ -39,6 +40,32 @@ def test_serialization_compatibility(schema_name, schema_version):
 	except FileNotFoundError:
 		#missing example file
 		assert True
+
+
+
+@pytest.mark.parametrize(
+	'schema_name,schema_version',
+	constants.constants.iterate_over_schemata(SCHEMA_ROOT)
+)
+def test_deserialization_compatibility(schema_name, schema_version):
+	namespace = 'messaging'
+	path = f'{SCHEMA_ROOT}/{namespace}/{schema_name}/{schema_version}/'
+	try:
+		data = yaml.unsafe_load(open(path + 'example.yaml'))
+		SCHEMA_FAVRO = yaml.load(open(path + 'schema.yaml'), Loader = yaml.Loader)
+		output_fastavro = io.BytesIO()
+		deserialize = cerializer.cerializer_handler.Cerializer(
+			[SCHEMA_ROOT]
+		).code[cerializer.cerializer_handler.get_schema_identifier(namespace, schema_name, schema_version)]['deserialize']
+		fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
+		output_fastavro.seek(0)
+		deserialized_data = deserialize(output_fastavro)
+		output_fastavro.seek(0)
+		assert deserialized_data == fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
+	except FileNotFoundError:
+		# missing example file
+		assert True
+
 
 
 @pytest.mark.parametrize(

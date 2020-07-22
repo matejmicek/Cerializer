@@ -18,24 +18,35 @@ class CodeGenerator:
 		self.dict_name_generator = name_generator('d_dict')
 		self.val_name_generator = name_generator('val')
 		self.key_name_generator = name_generator('key')
+		self.int_name_generator = name_generator('i')
+		self.counter_name_generator = name_generator('counter')
 		self.schema_database = cerializer.schema_handler.get_subschemata(schema_roots)
 		self.jinja_env = jinja_env
-		self.necessary_defs = []
+		self.necessary_defs = set()
 		self.cycle_starting_nodes = {}
 		self.init_cycles()
 
 
-	def prepare(self, logical_type, data_type, location, schema):
+	def prepare(self, mode, logical_type, data_type, location, schema):
 		'''
-		Returns a serialization function string for logical types that need to be prepared first.
+		Returns a de/serialization function string for logical types that need to be prepared first.
 		'''
-		if logical_type == 'decimal':
-			params = {
-				'scale': schema.get('scale', 0),
-				'size': schema.get('size', 0)
-			}
-			return f'write.write_{data_type}({self.buffer_name}, prepare.prepare_{data_type}_{logical_type}({location}, {params}))'
-		return f'write.write_{data_type}({self.buffer_name}, prepare.prepare_{logical_type}({location}))'
+		logical_type = logical_type.replace('-', '_')
+		params = {
+			'scale': schema.get('scale', 0),
+			'size': schema.get('size', 0),
+			'precision': schema.get('precision')
+		}
+
+		read_params = f'fo, {params}' if data_type == 'fixed' else 'fo'
+		if mode is constants.constants.MODE_SERIALIZE:
+			prepare_params = f'{location}, {params}' if logical_type == 'decimal' else location
+			prepare_type = f'{data_type}_{logical_type}' if logical_type == 'decimal' else logical_type
+			return f'write.write_{data_type}({self.buffer_name}, prepare.prepare_{prepare_type}({prepare_params}))'
+		elif mode is constants.constants.MODE_DESERIALIZE:
+			prepare_params = f'read.read_{data_type}({read_params}), {params}' if logical_type == 'decimal' else f'read.read_{data_type}({read_params})'
+			return f'{location} = read.read_{logical_type}({prepare_params})'
+
 
 
 	def get_logical_type_constraint(self, schema, location):
@@ -61,13 +72,16 @@ class CodeGenerator:
 		return f'write.write_{type_}({self.buffer_name}, {location})'
 
 
-	def get_deserialization_function(self, type_: str, location: str):
+	def get_deserialization_function(self, type_: str, location: str, schema = None):
 		'''
 		Returns the corresponding serialization function call string.
 		'''
 		if type_ == 'null':
 			return f'{location} = None'
-		return f'{location} = read.read_{type_}({self.buffer_name})'
+		if type_ in self.schema_database and type_ not in constants.constants.BASIC_TYPES:
+			return self.generate_deserialization_code(self.schema_database[type_], location)
+		read_params = f'fo, {schema}' if type_ == 'fixed' else 'fo'
+		return f'{location} = read.read_{type_}({read_params})'
 
 
 	def get_union_index_function(self, index: int):
@@ -85,11 +99,32 @@ class CodeGenerator:
 			schema['items'],
 			'item'
 		)
-		template = self.jinja_env.get_template('array.jinja2')
+		template = self.jinja_env.get_template('array_serialization.jinja2')
 		return template.render(
 			location = location,
 			buffer_name = self.buffer_name,
 			item_serialization_code = item_serialization_code
+		)
+
+
+	def get_array_deserialization(self, schema, location):
+		'''
+		Return array serialization string.
+		'''
+		index_name = next(self.int_name_generator)
+		block_count_name = next(self.int_name_generator)
+		counter_name = next(self.counter_name_generator)
+		self.add_cdef('long long', index_name)
+		self.add_cdef('long long', block_count_name)
+		template = self.jinja_env.get_template('array_deserialization.jinja2')
+		return template.render(
+			location = location,
+			buffer_name = self.buffer_name,
+			items = schema['items'],
+			index_name = index_name,
+			block_count_name = block_count_name,
+			counter_name = counter_name,
+			generate_deserialization_code = self.generate_deserialization_code
 		)
 
 
@@ -99,6 +134,15 @@ class CodeGenerator:
 		'''
 		symbols = schema['symbols']
 		return f'write.write_int({self.buffer_name}, {symbols}.index({location}))'
+
+
+
+	def get_enum_deserialization(self, schema, location):
+		'''
+		Return enum deserialization string.
+		'''
+		symbols = schema['symbols']
+		return f'{location} = {symbols}[read.read_int(fo)]'
 
 
 	def get_union_serialization(self, schema, location, is_from_array = False):
@@ -137,10 +181,32 @@ class CodeGenerator:
 					self.generate_serialization_code(possible_type, new_location)
 				)
 			)
-		template = self.jinja_env.get_template('union.jinja2')
+		template = self.jinja_env.get_template('union_serialization.jinja2')
 		if is_from_array:
 			return template.render(types = possible_types_and_code, location = location, name = name, value = location)
 		return template.render(types = possible_types_and_code, location = location, name = name)
+
+
+	def get_union_deserialization(self, schema, location, is_from_array = False):
+		'''
+		Return union serialization string.
+		'''
+		index_name = next(self.int_name_generator)
+		self.add_cdef('long', index_name)
+		if is_from_array:
+			types = schema
+			new_location = location
+		else:
+			name = schema['name']
+			types = schema['type']
+			new_location = f'{location}[\'{name}\']'
+		template = self.jinja_env.get_template('union_deserialization.jinja2')
+		return template.render(
+			index_name = index_name,
+			types = types,
+			location = new_location,
+			get_deserialization_code = self.generate_deserialization_code
+		)
 
 
 	def get_map_serialization(self, schema, location):
@@ -148,8 +214,8 @@ class CodeGenerator:
 		Return map serialization string.
 		'''
 		dict_name = next(self.dict_name_generator)
-		self.cdefs.append(get_cdef('dict', dict_name))
-		template = self.jinja_env.get_template('map.jinja2')
+		self.add_cdef('dict', dict_name)
+		template = self.jinja_env.get_template('map_serialization.jinja2')
 		values = schema['values']
 		return template.render(
 			location = location,
@@ -157,7 +223,30 @@ class CodeGenerator:
 			values = values,
 			key_name = next(self.key_name_generator),
 			val_name = next(self.val_name_generator),
-			union_part = self.generate_serialization_code
+			item_part = self.generate_serialization_code
+		)
+
+
+	def get_map_deserialization(self, schema, location):
+		'''
+		Return map deserialization string.
+		'''
+		key_name = next(self.key_name_generator)
+		self.add_cdef('unicode', key_name)
+		block_count_name = next(self.int_name_generator)
+		self.add_cdef('long', block_count_name)
+		index_name = next(self.int_name_generator)
+		self.add_cdef('long', index_name)
+
+		template = self.jinja_env.get_template('map_deserialization.jinja2')
+		values = schema['values']
+		return template.render(
+			location = location,
+			values = values,
+			key_name = key_name,
+			item_part = self.generate_deserialization_code,
+			block_count_name = block_count_name,
+			index_name = index_name
 		)
 
 
@@ -168,10 +257,10 @@ class CodeGenerator:
 			cycle_detection(schema, visited, cycle_starting_nodes, self.schema_database)
 			for starting_node in cycle_starting_nodes:
 				self.cycle_starting_nodes[starting_node] = ''
-				self.cycle_starting_nodes[starting_node] =self.render_code(
+			for starting_node in cycle_starting_nodes:
+				self.cycle_starting_nodes[starting_node] = self.render_code(
 					self.schema_database[starting_node]
 				)
-
 
 
 	def render_code(self, schema):
@@ -187,6 +276,10 @@ class CodeGenerator:
 			schema = schema,
 			location = location
 		)
+		deserialization_code = self.generate_deserialization_code(
+			schema = schema,
+			location = location
+		)
 		cdefs = '\n'.join(self.cdefs)
 
 		template = self.jinja_env.get_template('template.jinja2')
@@ -195,6 +288,7 @@ class CodeGenerator:
 			cdefs = cdefs,
 			buffer_name = self.buffer_name,
 			serialization_code = serialization_code,
+			deserialization_code = deserialization_code,
 			necessary_defs = '\n'.join([i for i in self.necessary_defs if i != ''])
 		)
 		return rendered_template
@@ -208,14 +302,20 @@ class CodeGenerator:
 		self.jinja_env.globals['correct_constraint'] = self.correct_constraint
 		if type(schema) is str:
 			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
-				return self.handel_cycle(schema, location)
+				return self.handle_cycle(constants.constants.MODE_SERIALIZE, schema, location)
 			return self.get_serialization_function(schema, location)
 		if type(schema) is list:
 			return self.get_union_serialization(schema, location, is_from_array = True)
 		type_ = schema['type']
 
 		if f'logicalType' in schema:
-			prepared = self.prepare(schema['logicalType'].replace('-', '_'), type_, location, schema)
+			prepared = self.prepare(
+				constants.constants.MODE_SERIALIZE,
+				schema['logicalType'],
+				type_,
+				location,
+				schema
+			)
 			return prepared
 		elif type_ == constants.constants.RECORD:
 			return '\n'.join(
@@ -251,26 +351,106 @@ class CodeGenerator:
 
 		elif type(type_) is str and type_ in self.schema_database:
 			if type_ in self.cycle_starting_nodes:
-				return self.handel_cycle(type_, location)
+				return self.handle_cycle(constants.constants.MODE_SERIALIZE, type_, location)
 			name = schema['name']
 			new_location = f'{location}[\'{name}\']'
 			return self.generate_serialization_code(self.schema_database[type_], new_location)
 
 
-	def handel_cycle(self, schema, location):
+	def generate_deserialization_code(self, schema, location):
+		'''
+		Driver function to handle code generation for a schema.
+		'''
+		self.jinja_env.globals['correct_type'] = self.correct_type
+		self.jinja_env.globals['correct_constraint'] = self.correct_constraint
+		if type(schema) is str:
+			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
+				return self.handle_cycle(constants.constants.MODE_DESERIALIZE, schema, location)
+			return self.get_deserialization_function(schema, location)
+		if type(schema) is list:
+			return self.get_union_deserialization(schema, location, is_from_array = True)
+		type_ = schema['type']
+
+		if f'logicalType' in schema:
+			prepared = self.prepare(
+				constants.constants.MODE_DESERIALIZE,
+				schema['logicalType'],
+				type_,
+				location,
+				schema
+			)
+			return prepared
+		elif type_ == constants.constants.RECORD:
+			field_deserialization = '\n'.join(
+				(
+					self.generate_deserialization_code(
+						field,
+						location
+					)
+				) for field in schema['fields'])
+			return location + ' = {}\n' + field_deserialization
+		elif type_ == constants.constants.ARRAY:
+			return self.get_array_deserialization(schema, location)
+		elif type_ == constants.constants.ENUM:
+			return self.get_enum_deserialization(schema, location)
+		elif type_ == constants.constants.MAP:
+			return self.get_map_deserialization(
+				schema,
+				location
+			)
+		elif type_ == constants.constants.FIXED:
+			return self.get_deserialization_function(type_, location, schema = schema)
+		elif type(type_) is dict:
+			name = schema['name']
+			new_location = f'{location}[\'{name}\']'
+			return self.generate_deserialization_code(type_, new_location)
+		elif type(type_) is list:
+			return self.get_union_deserialization(schema, location)
+
+		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
+			name = schema.get('name')
+			if name:
+				location = f'{location}[\'{name}\']'
+			return self.get_deserialization_function(type_, location, schema = schema)
+
+		elif type(type_) is str and type_ in self.schema_database:
+			if type_ in self.cycle_starting_nodes:
+				return self.handle_cycle(constants.constants.MODE_DESERIALIZE, type_, location)
+			name = schema['name']
+			new_location = f'{location}[\'{name}\']'
+			return self.generate_deserialization_code(self.schema_database[type_], new_location)
+
+
+	def handle_cycle(self, mode, schema, location):
 		normalised_type = schema.replace(':', '_').replace('.', '_')
-		serialization_function = f'serialize_{normalised_type}(data, output)'
-		self.necessary_defs.append(
+		serialization_function = f'{constants.constants.MODE_SERIALIZE}_{normalised_type}(data, output)'
+		deserialization_function = f'{constants.constants.MODE_DESERIALIZE}_{normalised_type}(fo)'
+		self.necessary_defs.add(
 			self.cycle_starting_nodes[schema].replace(
-				'cpdef serialize(data, output)',
+				f'cpdef {constants.constants.MODE_SERIALIZE}(data, output)',
 				f'def {serialization_function}'
 			).replace(
-				'def serialize(data, output)',
+				f'def {constants.constants.MODE_SERIALIZE}(data, output)',
 				f'def {serialization_function}'
+			).replace(
+				f'cpdef {constants.constants.MODE_DESERIALIZE}(fo)',
+				f'def {deserialization_function}'
+			).replace(
+				f'def {constants.constants.MODE_DESERIALIZE}(fo)',
+				f'def {deserialization_function}'
 			)
 		)
 		serialization_function_call = serialization_function.replace('(data,', f'({location},')
-		return f'output.write(buffer)\nbuffer = bytearray()\n{serialization_function_call}'
+		if mode is constants.constants.MODE_SERIALIZE:
+			return f'output.write(buffer)\nbuffer = bytearray()\n{serialization_function_call}'
+		elif mode is constants.constants.MODE_DESERIALIZE:
+			return f'{location} = {deserialization_function}'
+
+
+	def add_cdef(self, type_: str, name: str):
+		cdef = f'cdef {type_} {name}'
+		self.cdefs.append(cdef)
+
 
 	def correct_type(self, type_):
 		'''
@@ -356,11 +536,6 @@ def parse_schema_from_file(path):
 		except fastavro.schema.UnknownType as e:
 			# we ignore missing schema errors since we are going to fill them in later
 			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
-
-
-
-def get_cdef(type_: str, name: str):
-	return f'cdef {type_} {name}'
 
 
 

@@ -4,6 +4,6 @@ if len(datum) > 0:
     {{ write_prefix }}write.write_long({{ buffer_name }}, len(datum))
     for {{ key_name }}, {{ val_name }} in datum.items():
         {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
-        {{ union_part(values, val_name) | indent(8)}}
+        {{ item_part(values, val_name) | indent(8)}}
 
 {{ write_prefix }}write.write_long({{ buffer_name }}, 0)
