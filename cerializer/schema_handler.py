@@ -97,7 +97,7 @@ class CodeGenerator:
 			location = location,
 			buffer_name = self.buffer_name,
 			item_serialization_code = item_serialization_code,
-			item_name = item_name
+			item_name = item_name,
 		)
 
 	def get_array_deserialization(self, schema: Dict[str, Any], location: str) -> str:
@@ -137,6 +137,7 @@ class CodeGenerator:
 		'''
 		Return union serialization string.
 		'''
+		default = schema.get('default') if type(schema) is dict else None
 		if len([item for item in schema if (type(item) is dict and item.get('type') == 'array')]) > 1:
 			# this is documented in task CL-132
 			raise NotImplementedError(
@@ -184,6 +185,7 @@ class CodeGenerator:
 				name = name,
 				type_name = type_name,
 				data_name = data_name,
+				default = default,
 				value = location,
 			)
 		return template.render(
@@ -192,6 +194,7 @@ class CodeGenerator:
 			name = name,
 			type_name = type_name,
 			data_name = data_name,
+			default = default,
 		)
 
 	def get_union_deserialization(
@@ -213,11 +216,7 @@ class CodeGenerator:
 			types = schema['type']
 			new_location = f"{location}['{name}']"
 		template = self.jinja_env.get_template('union_deserialization.jinja2')
-		return template.render(
-			index_name = index_name,
-			types = types,
-			location = new_location
-		)
+		return template.render(index_name = index_name, types = types, location = new_location)
 
 	def get_map_serialization(self, schema: Dict[str, Any], location: str) -> str:
 		'''
@@ -235,7 +234,7 @@ class CodeGenerator:
 			buffer_name = self.buffer_name,
 			values = values,
 			key_name = key_name,
-			val_name = val_name
+			val_name = val_name,
 		)
 
 	def get_map_deserialization(self, schema: Dict[str, Any], location: str) -> str:
@@ -281,9 +280,9 @@ class CodeGenerator:
 		self.jinja_env.globals['generate_deserialization_code'] = self.generate_deserialization_code
 		self.jinja_env.globals['get_type_name'] = cerializer.utils.get_type_name
 		location = 'data'
-		# TODO maybe get rid of this. This is here because if schema name XYZ is defined in this file and also
-		# TODO somewhere else in the schema repo, the definition from this file has to be considered first
-		cerializer.utils.scan_schema_for_subschemas(schema, self.schema_database)
+		# This is here because if schema name XYZ is defined in this file and also
+		# somewhere else in the schema repo, the definition from this file has to be considered first
+		cerializer.utils.scan_schema_for_subschemata(schema, self.schema_database)
 		serialization_code = self.generate_serialization_code(schema = schema, location = location)
 		serialization_code = '\n'.join(self.cdefs) + '\n' + serialization_code
 		self.cdefs = []
@@ -304,6 +303,7 @@ class CodeGenerator:
 		'''
 		Driver function to handle code generation for a schema.
 		'''
+		schema = cerializer.utils.handle_if_default(schema)
 		if type(schema) is str:
 			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_SERIALIZE, schema, location)

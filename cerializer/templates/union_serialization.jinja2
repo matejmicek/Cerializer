@@ -1,4 +1,4 @@
-if type({{ location }}) is tuple:
+if type({% if value %}{{ value }}{% else %}{{ location + ".get('" + name + "')"}}{% endif %}) is tuple:
     {{ type_name }}, {{ data_name }} = {{ location }}
     {% for type_, number_code, serialization_code in types %}
     {% if loop.first %}if{% else %}elif{% endif %} {{ type_name }} == '{{ get_type_name(type_) }}':
@@ -11,4 +11,7 @@ else:
     {{ correct_constraint(type_, location, name, loop.first, value) }}
         {{ number_code }}
         {{ serialization_code | indent(8)}}
+        {% if type_ == 'null' and  default %}
+        {{ location }} = {{ default }}
+        {% endif %}
 {% endfor %}

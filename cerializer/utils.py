@@ -1,25 +1,36 @@
 # pylint: disable=protected-access
 import copy
 import os
+from typing import Any, Dict, Iterator, List, Set, Tuple, Union
 
 import fastavro
 import yaml
 
-import cerializer.cerializer_handler
+
+def get_schema_identifier(namespace: str, schema_name: str, schema_version: int) -> str:
+	return f'{namespace}.{schema_name}:{schema_version}'
 
 
-def iterate_over_schemata(schema_root):
-	for namespace in [f for f in os.listdir(schema_root) if not f.startswith('.')]:
-		for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith('.')]:
-			for version in [
-				f
-				for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
-				if not f.startswith('.')
-			]:
-				yield schema_name, int(version)
+def iterate_over_schema_roots(schema_roots: List[str]) -> Iterator[Tuple[str, str]]:
+	for schema_root in schema_roots:
+		schema_root = os.fsencode(schema_root)
+		for namespace in [f for f in os.listdir(schema_root) if not f.startswith(b'.')]:
+			for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith(b'.')]:
+				for version in [
+					f
+					for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
+					if not f.startswith(b'.')
+				]:
+					schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
+					schema_identifier = get_schema_identifier(
+						namespace.decode(),
+						schema_name.decode(),
+						int(version.decode()),
+					)
+					yield schema_path.decode(), schema_identifier
 
 
-def correct_type(type_):
+def correct_type(type_: str) -> str:
 	'''
 	Corrects the nuances between Avro type definitions and actual python type names.
 	'''
@@ -36,7 +47,7 @@ def correct_type(type_):
 		return type_
 
 
-def get_logical_type_constraint(schema, location):
+def get_logical_type_constraint(schema: Dict[str, Any], location: str) -> str:
 	logical_type = schema['logicalType'].replace('-', '_')
 	data_type = schema['type']
 	if logical_type == 'decimal':
@@ -45,14 +56,14 @@ def get_logical_type_constraint(schema, location):
 	return f'type(prepare.prepare_{logical_type}({location})) is {data_type}'
 
 
-def name_generator(prefix: str):
+def name_generator(prefix: str) -> Iterator[str]:
 	i = 0
 	while True:
 		yield f'{prefix}_{i}'
 		i += 1
 
 
-def parse_schema_from_file(path):
+def parse_schema_from_file(path: str) -> Any:
 	'''
 	Wrapper for loading schemata from yaml
 	'''
@@ -66,29 +77,34 @@ def parse_schema_from_file(path):
 			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
 
 
-def get_subschemata(schema_roots):
-	schema_database = {}
-	for schema_path, schema_identifier in cerializer.cerializer_handler.iterate_over_schema_roots(schema_roots):
+def get_subschemata(schema_roots: List[str]) -> Dict[str, Any]:
+	schema_database: Dict[str, Any] = {}
+	for schema_path, schema_identifier in iterate_over_schema_roots(schema_roots):
 		schema = parse_schema_from_file(schema_path)
 		if '.' in schema_identifier:
 			schema_database[schema_identifier] = schema
-		scan_schema_for_subschemas(schema, schema_database)
+		scan_schema_for_subschemata(schema, schema_database)
 	return schema_database
 
 
-def scan_schema_for_subschemas(schema, schema_database):
+def scan_schema_for_subschemata(schema: Any, schema_database: Dict[str, Any]) -> None:
 	if type(schema) is dict:
 		name = schema.get('name')
 		if name and '.' in name:
 			schema_database[name] = schema
 		for _, subschema in schema.items():
-			scan_schema_for_subschemas(subschema, schema_database)
+			scan_schema_for_subschemata(subschema, schema_database)
 	if type(schema) in (list, dict):
 		for subschema in schema:
-			scan_schema_for_subschemas(subschema, schema_database)
+			scan_schema_for_subschemata(subschema, schema_database)
 
 
-def cycle_detection(parsed_schema, visited, cycle_starting_nodes, schema_database):
+def cycle_detection(
+	parsed_schema: Dict[str, Any],
+	visited: Set[str],
+	cycle_starting_nodes: Set[str],
+	schema_database: Dict[str, Any],
+):
 	if type(parsed_schema) is str and parsed_schema in visited:
 		cycle_starting_nodes.add(parsed_schema)
 	elif type(parsed_schema) is dict:
@@ -111,8 +127,30 @@ def cycle_detection(parsed_schema, visited, cycle_starting_nodes, schema_databas
 				cycle_detection(schema_database[type_], new_visited, cycle_starting_nodes, schema_database)
 
 
-def get_type_name(type_):
-	if type(type_) is str:
-		return type_
-	else:
-		return type_.get('name')
+def get_type_name(type_: Union[str, Dict[str, Any]]) -> Union[str, None]:
+	return type_ if type(type_) is str else type_.get('name')
+
+
+def iterate_over_schemata(schema_roots):
+	for schema_root in schema_roots:
+		for namespace in [f for f in os.listdir(schema_root) if not f.startswith('.')]:
+			for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith('.')]:
+				for version in [
+					f
+					for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
+					if not f.startswith('.')
+				]:
+					yield schema_root, namespace, schema_name, int(version)
+
+
+def handle_if_default(schema: Any):
+	if type(schema) is dict and schema.get('default'):
+		type_ = schema['type']
+		if type(type_) is str:
+			schema['type'] = ['null', type_]
+		if type(type_) is list:
+			schema['type'] = ['null'] + type_
+		return schema
+	if type(schema) is dict:
+		schema['default'] = None
+	return schema
