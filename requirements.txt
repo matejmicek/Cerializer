@@ -1,4 +1,4 @@
-ql-fastavro==0.22.6
+fastavro==0.22.6
 Cython==0.29.16
 PyYAML==5.3.1
 setuptools==46.0.0

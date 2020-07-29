@@ -97,7 +97,7 @@ class CodeGenerator:
 			location = location,
 			buffer_name = self.buffer_name,
 			item_serialization_code = item_serialization_code,
-			item_name = item_name
+			item_name = item_name,
 		)
 
 	def get_array_deserialization(self, schema: Dict[str, Any], location: str) -> str:
@@ -213,11 +213,7 @@ class CodeGenerator:
 			types = schema['type']
 			new_location = f"{location}['{name}']"
 		template = self.jinja_env.get_template('union_deserialization.jinja2')
-		return template.render(
-			index_name = index_name,
-			types = types,
-			location = new_location
-		)
+		return template.render(index_name = index_name, types = types, location = new_location)
 
 	def get_map_serialization(self, schema: Dict[str, Any], location: str) -> str:
 		'''
@@ -235,7 +231,7 @@ class CodeGenerator:
 			buffer_name = self.buffer_name,
 			values = values,
 			key_name = key_name,
-			val_name = val_name
+			val_name = val_name,
 		)
 
 	def get_map_deserialization(self, schema: Dict[str, Any], location: str) -> str:
@@ -281,9 +277,9 @@ class CodeGenerator:
 		self.jinja_env.globals['generate_deserialization_code'] = self.generate_deserialization_code
 		self.jinja_env.globals['get_type_name'] = cerializer.utils.get_type_name
 		location = 'data'
-		# TODO maybe get rid of this. This is here because if schema name XYZ is defined in this file and also
-		# TODO somewhere else in the schema repo, the definition from this file has to be considered first
-		cerializer.utils.scan_schema_for_subschemas(schema, self.schema_database)
+		# This is here because if schema name XYZ is defined in this file and also
+		# somewhere else in the schema repo, the definition from this file has to be considered first
+		cerializer.utils.scan_schema_for_subschemata(schema, self.schema_database)
 		serialization_code = self.generate_serialization_code(schema = schema, location = location)
 		serialization_code = '\n'.join(self.cdefs) + '\n' + serialization_code
 		self.cdefs = []
@@ -333,14 +329,16 @@ class CodeGenerator:
 		elif type(type_) is dict:
 			name = schema['name']
 			new_location = f"{location}['{name}']"
-			return self.generate_serialization_code(type_, new_location)
+			default_if_necessary = cerializer.utils.default_if_necessary(new_location, schema.get('default'))
+			return default_if_necessary + '\n' + self.generate_serialization_code(type_, new_location)
 		elif type(type_) is list:
 			return self.get_union_serialization(schema, location)
 		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
 			name = schema.get('name')
 			if name:
 				location = f"{location}['{name}']"
-			return self.get_serialization_function(type_, location)
+			default_if_necessary = cerializer.utils.default_if_necessary(location, schema.get('default'))
+			return default_if_necessary + '\n' + self.get_serialization_function(type_, location)
 		elif type(type_) is str and type_ in self.schema_database:
 			if type_ in self.cycle_starting_nodes:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_SERIALIZE, type_, location)
@@ -459,6 +457,9 @@ class CodeGenerator:
 					constraint = f'"{key}" not in {location} or {location}["{key}"] is None'
 			else:
 				constraint = f'type({full_location}) is {cerializer.utils.correct_type(type_)}'
+
+		elif type(type_) is dict and type_.get('type') == 'fixed':
+			constraint = f'type({full_location}) is bytes'
 
 		elif type(type_) is dict and type_.get('type') == 'array':
 			constraint = f'type({full_location}) is list'
