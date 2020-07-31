@@ -28,6 +28,6 @@ jobs:
         python-version: 3.8
     - name: cq
       run: |
-        python -m pip3 install --upgrade pip wheel
-        python -m pip3 install ql-cq
+        python -m pip install --upgrade pip wheel
+        python -m pip install ql-cq
         cq
