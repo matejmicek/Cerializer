@@ -25,6 +25,5 @@ jobs:
     - name: cq
       run: |
         pip3 install --upgrade pip wheel
-        pip3 install -r requirements.txt
         pip3 install ql-cq
         cq
