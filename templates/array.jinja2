@@ -1,5 +1,0 @@
-if len({{ location }}) > 0:
-	write.write_long({{ buffer_name }}, len({{ location }}))
-	for item in {{ location }}:
-{{ item_deserialization_code | indent(8, True)}}
-write_long({{ buffer_name }}, 0)

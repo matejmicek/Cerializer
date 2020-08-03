@@ -1,0 +1,5 @@
+if len({{ location }}) > 0:
+    {{ write_prefix }}write.write_long({{ buffer_name }}, len({{ location }}))
+    for {{ item_name }} in {{ location }}:
+        {{ item_serialization_code | indent(8)}}
+{{ write_prefix }}write.write_long({{ buffer_name }}, 0)

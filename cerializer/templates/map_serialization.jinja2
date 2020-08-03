@@ -1,0 +1,9 @@
+datum = <dict>{{ location }}
+
+if len(datum) > 0:
+    {{ write_prefix }}write.write_long({{ buffer_name }}, len(datum))
+    for {{ key_name }}, {{ val_name }} in datum.items():
+        {{ write_prefix }}write.write_string({{ buffer_name }}, {{ key_name }})
+        {{ generate_serialization_code(values, val_name) | indent(8)}}
+
+{{ write_prefix }}write.write_long({{ buffer_name }}, 0)

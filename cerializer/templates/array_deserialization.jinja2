@@ -1,0 +1,11 @@
+{{ location }} = []
+
+{{ block_count_name }} = read.read_long(fo)
+while {{ block_count_name }} != 0:
+    if {{ block_count_name }} < 0:
+        {{ block_count_name }} = -{{ block_count_name }}
+        read.read_long(fo)
+    for {{ index_name }} in range({{ block_count_name }}):
+        {{ generate_deserialization_code(items, potential_item_name) | indent(8)}}
+        {{ location }}.append({{ potential_item_name }})
+    {{ block_count_name }} = read.read_long(fo)

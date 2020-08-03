@@ -1,0 +1,12 @@
+{{ location }} = {}
+{{ block_count_name }} = read.read_long(fo)
+while {{ block_count_name }} != 0:
+    if {{ block_count_name }} < 0:
+        {{ block_count_name }} = -{{ block_count_name }}
+        read.read_long(fo)
+
+    for {{ index_name }} in range({{ block_count_name }}):
+        {{ key_name }} = read.read_string(fo)
+        {{ generate_deserialization_code(values, location + "[" + key_name + "]") | indent(8) }}
+
+    {{ block_count_name }} = read.read_long(fo)

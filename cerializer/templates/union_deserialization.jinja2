@@ -1,0 +1,6 @@
+{{ index_name }} = read.read_int(fo)
+{%  for type_ in types %}
+if {{ index_name }} == {{ loop.index0 }}:
+    {{ generate_deserialization_code(type_, location) | indent(4)}}
+
+{% endfor %}
