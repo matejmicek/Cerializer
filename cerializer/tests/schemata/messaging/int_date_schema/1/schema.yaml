@@ -1,8 +1,0 @@
-name: fixed_decimal
-namespace: messaging
-type: record
-fields:
-
-  - name: date
-    description: Estimated profit
-    type: {"type": "int", "name": "Date", "logicalType": "date"}
