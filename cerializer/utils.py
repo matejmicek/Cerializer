@@ -2,33 +2,11 @@
 import copy
 import itertools
 import os
-from typing import Any, Dict, Iterator, List, Set, Tuple, Union
+from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union
 
 import fastavro
 import yaml
 
-
-def get_schema_identifier(namespace: str, schema_name: str, schema_version: int) -> str:
-	return f'{namespace}.{schema_name}:{schema_version}'
-
-
-def iterate_over_schema_roots(schema_roots: List[str]) -> Iterator[Tuple[str, str]]:
-	for schema_root in schema_roots:
-		schema_root = os.fsencode(schema_root)
-		for namespace in [f for f in os.listdir(schema_root) if not f.startswith(b'.')]:
-			for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith(b'.')]:
-				for version in [
-					f
-					for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
-					if not f.startswith(b'.')
-				]:
-					schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
-					schema_identifier = get_schema_identifier(
-						namespace.decode(),
-						schema_name.decode(),
-						int(version.decode()),
-					)
-					yield schema_path.decode(), schema_identifier
 
 
 def correct_type(type_: str) -> str:
@@ -60,27 +38,27 @@ def name_generator(prefix: str) -> Iterator[str]:
 	yield from (f'{prefix}_{i}' for i in itertools.count())
 
 
-def parse_schema_from_file(path: str) -> Any:
+def parse_schema(schema: Union[Dict[Hashable, Any], list, None]) -> Any:
 	'''
 	Wrapper for loading schemata from yaml
 	'''
-	json_object = yaml.safe_load(open(path))
 	while True:
 		try:
-			parsed = fastavro.parse_schema(json_object)
+			parsed = fastavro.parse_schema(schema)
 			return parsed
 		except fastavro.schema.UnknownType as e:
 			# we ignore missing schema errors since we are going to fill them in later
 			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
 
 
-def get_subschemata(schema_roots: List[str]) -> Dict[str, Any]:
+def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Any]:
 	schema_database: Dict[str, Any] = {}
-	for schema_path, schema_identifier in iterate_over_schema_roots(schema_roots):
-		schema = parse_schema_from_file(schema_path)
-		if '.' in schema_identifier:
-			schema_database[schema_identifier] = schema
-		scan_schema_for_subschemata(schema, schema_database)
+	if schemata:
+		for schema_identifier, schema in schemata:
+			parsed_schema = parse_schema(schema)
+			if '.' in schema_identifier:
+				schema_database[schema_identifier] = fastavro.parse_schema(parsed_schema)
+			scan_schema_for_subschemata(parsed_schema, schema_database)
 	return schema_database
 
 
@@ -133,17 +111,6 @@ def get_type_name(type_: Union[str, Dict[str, Any]]) -> Union[str, None]:
 	return type_ if type(type_) is str else type_.get('name')
 
 
-def iterate_over_schemata(schema_roots: List[str]) -> Iterator[Tuple[str, str, str, int]]:
-	for schema_root in schema_roots:
-		for namespace in [f for f in os.listdir(schema_root) if not f.startswith('.')]:
-			for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith('.')]:
-				for version in [
-					f
-					for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
-					if not f.startswith('.')
-				]:
-					yield schema_root, namespace, schema_name, int(version)
-
 
 def default_if_necessary(location: str, default: Any) -> str:
 	if default is None:
@@ -156,3 +123,7 @@ def default_if_necessary(location: str, default: Any) -> str:
 		l = location.rfind('[')
 		constraint = f'if {location[:l]}.get({location[l+1:r]}) is None:'
 	return f'{constraint}\n' f'    {location} = {default}'
+
+
+def get_schema_identifier(namespace: str, schema_name: str) -> str:
+	return f'{namespace}.{schema_name}'

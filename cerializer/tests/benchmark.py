@@ -1,3 +1,5 @@
+# Quantlane specific code for benchmarking Cerializer
+
 import timeit
 from typing import List, Union, Dict, Hashable, Any, Tuple
 
@@ -9,13 +11,13 @@ import cerializer.utils
 import logwood
 
 
-SCHEMA_ROOT = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
-SCHEMA_ROOT = '/Users/matejmicek/PycharmProjects/schema_root'
+# developer specific path. Serves only as an example.
+SCHEMA_ROOT = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
 SCHEMA_ROOTS = [SCHEMA_ROOT]
 
 
-def benchmark_schema_deserialize(
+def _benchmark_schema_deserialize(
 	schema_roots: List[str],
 	schema_favro: Union[Dict[Hashable, Any], list, None],
 	path: str,
@@ -82,12 +84,13 @@ x = c.Cerializer({schema_roots}).code['{schema_identifier}']['deserialize']
 	try:
 		score_json = timeit.timeit(stmt = 'y = json.loads(json_data)', setup = setup, number = count)
 	except TypeError:
-		score_json = 666 * score_string_cerializer
+		# Json is not able to serialize certain data types: when this happens we give it a score of -1
+		score_json = -1 * score_string_cerializer
 
 	return (score_string_cerializer, score_codec, score_fastavro, score_json)
 
 
-def benchmark_schema_serialize(
+def _benchmark_schema_serialize(
 	schema_roots: str,
 	schema_favro: Union[Dict[Hashable, Any], list, None],
 	path: str,
@@ -138,7 +141,8 @@ x = c.Cerializer({schema_roots}).code['{schema_identifier}']['serialize']
 	try:
 		score_json_serialize = timeit.timeit(stmt = 'json.dumps(data)', setup = setup, number = count)
 	except TypeError:
-		score_json_serialize = 666 * score_string_cerializer
+		# Json is not able to serialize certain data types: when this happens we give it a score of -1
+		score_json_serialize = -1 * score_string_cerializer
 
 	return (score_string_cerializer, score_codec_serialize, score_fastavro_serialize, score_json_serialize)
 
@@ -150,7 +154,7 @@ def benchmark(schema_roots, count = 100000) -> str:
 	'''
 	# this hes to be here because of logs from schema poller
 	logwood.basic_config()
-	cerializer.tests.test_cerializer_compatibility.init_fastavro()
+	cerializer.tests.test_cerializer_compatibility.init_fastavro(SCHEMA_ROOTS)
 	schemata = list(cerializer.utils.iterate_over_schemata(schema_roots))
 	table_results_serialize: List[Tuple[Any, Any, Any]] = []
 	table_results_deserialize: List[Tuple[Any, Any, Any]] = []
@@ -158,7 +162,7 @@ def benchmark(schema_roots, count = 100000) -> str:
 	for schema_root, namespace, schema, version in schemata:
 		SCHEMA_FILE = f'{schema_root}/{namespace}/{schema}/{version}/schema.yaml'
 		SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
-		result_deserialize = benchmark_schema_deserialize(
+		result_deserialize = _benchmark_schema_deserialize(
 			schema_roots = schema_roots,
 			schema_version = version,
 			namespace = namespace,
@@ -169,7 +173,7 @@ def benchmark(schema_roots, count = 100000) -> str:
 			schema_identifier = cerializer.utils.get_schema_identifier(namespace, schema, version),
 		)
 
-		result_serialize = benchmark_schema_serialize(
+		result_serialize = _benchmark_schema_serialize(
 			schema_version = version,
 			namespace = namespace,
 			schema_roots = schema_roots,
@@ -220,3 +224,6 @@ def benchmark(schema_roots, count = 100000) -> str:
 			table.add_row(row)
 		tables.append(table.draw())
 	return '\n\n\n'.join(tables)
+
+
+print(benchmark(SCHEMA_ROOTS, 10))

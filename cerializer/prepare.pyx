@@ -5,6 +5,9 @@ from cpython.tuple cimport PyTuple_GET_ITEM
 import os
 from pytz import utc
 import decimal
+# Mostly taken from fastavro version 0.22.6
+# Original file: https://github.com/fastavro/fastavro/blob/master/fastavro/_logical_writers.pyx
+
 
 import qutils.time.nanotime
 

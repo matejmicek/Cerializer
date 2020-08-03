@@ -1,5 +1,5 @@
 # pylint: disable=protected-access
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, Hashable, List, Set, Union, Tuple
 
 import jinja2
 
@@ -12,7 +12,7 @@ class CodeGenerator:
 	def __init__(
 		self,
 		jinja_env: jinja2.environment.Environment,
-		schema_roots: List[str],
+		schemata: List[Tuple[str, Union[Dict[Hashable, Any]]]],
 		buffer_name: str,
 	) -> None:
 		self.buffer_name = buffer_name
@@ -22,7 +22,7 @@ class CodeGenerator:
 		self.key_name_generator = cerializer.utils.name_generator('key')
 		self.type_name_generator = cerializer.utils.name_generator('type')
 		self.int_name_generator = cerializer.utils.name_generator('i')
-		self.schema_database = cerializer.utils.get_subschemata(schema_roots)
+		self.schema_database = cerializer.utils.get_subschemata(schemata)
 		self.jinja_env = jinja_env
 		self.necessary_defs: Set[str] = set()
 		self.cycle_starting_nodes: Dict[str, str] = {}
@@ -294,6 +294,8 @@ class CodeGenerator:
 			deserialization_code = deserialization_code,
 			necessary_defs = '\n\n\n\n'.join([i for i in self.necessary_defs if i != '']),
 		)
+		self.cdefs = []
+		self.necessary_defs = set()
 		return rendered_template
 
 	def generate_serialization_code(self, schema: Dict[str, Any], location: str) -> str:
@@ -346,7 +348,7 @@ class CodeGenerator:
 			new_location = f"{location}['{name}']"
 			return self.generate_serialization_code(self.schema_database[type_], new_location)
 
-	def generate_deserialization_code(self, schema: Dict[str, Any], location: str) -> str:
+	def generate_deserialization_code(self, schema: Union[Dict[Hashable, Any], list, None], location: str) -> str:
 		'''
 		Driver function to handle code generation for a schema.
 		'''
@@ -483,3 +485,8 @@ class CodeGenerator:
 		if constraint:
 			return f'{"if" if first else "elif"} {constraint}:'
 		raise RuntimeError(f'invalid constraint for type == {type_}')
+
+
+	def acknowledge_new_schemata(self, schemata: List[Tuple[str, Dict[str, Any]]]):
+		new_subschemata = cerializer.utils.get_subschemata(schemata)
+		self.schema_database = {**self.schema_database, **new_subschemata}

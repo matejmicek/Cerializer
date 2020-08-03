@@ -10,34 +10,39 @@ import yaml
 import logging
 import cerializer.cerializer_handler
 import cerializer.compiler
+import cerializer.quantlane_utils
 import cerializer.utils
 
 
 MAGIC_BYTE = b'\x00'
 
-SCHEMA_ROOT1 = '/Users/matejmicek/PycharmProjects/schema_root'
-SCHEMA_ROOT2 = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT1 = '/home/development/root_schemata'
+SCHEMA_ROOT2 = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
 SCHEMA_ROOTS = [SCHEMA_ROOT1, SCHEMA_ROOT2]
+
+@pytest.fixture(scope = 'module')
+def schemata():
+	return cerializer.quantlane_utils.schema_roots_to_schemata(SCHEMA_ROOTS)
 
 
 def prefix(version):
 	return MAGIC_BYTE + struct.pack('>I', version)
 
 
-def init_fastavro():
-	for schema_identifier, subschema in cerializer.utils.get_subschemata(SCHEMA_ROOTS).items():
+def init_fastavro(schema_roots):
+	for schema_identifier, subschema in cerializer.utils.get_subschemata(schema_roots).items():
 		fastavro._schema_common.SCHEMA_DEFS[schema_identifier] = subschema  # pylint: disable = protected-access
 
 
 @pytest.fixture(scope = 'module')
-def cerializer_instance():
-	return cerializer.cerializer_handler.Cerializer(SCHEMA_ROOTS)
+def cerializer_instance(schemata):
+	return cerializer.cerializer_handler.Cerializer(schemata)
 
 
 @pytest.mark.parametrize(
 	'schema_root, namespace, schema_name,schema_version',
-	cerializer.utils.iterate_over_schemata(SCHEMA_ROOTS),
+	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
 def test_fastavro_compatibility_serialize(
 	schema_root,
@@ -47,7 +52,7 @@ def test_fastavro_compatibility_serialize(
 	cerializer_instance,
 ):
 	# patch for not working avro codec
-	init_fastavro()
+	init_fastavro(SCHEMA_ROOTS)
 	path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 	try:
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
@@ -71,7 +76,7 @@ def test_fastavro_compatibility_serialize(
 
 @pytest.mark.parametrize(
 	'schema_root, namespace, schema_name,schema_version',
-	cerializer.utils.iterate_over_schemata(SCHEMA_ROOTS),
+	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
 def test_fastavro_compatibility_deserialize(
 	schema_root,
@@ -81,7 +86,7 @@ def test_fastavro_compatibility_deserialize(
 	cerializer_instance,
 ):
 	# patch for not working avro codec
-	init_fastavro()
+	init_fastavro(SCHEMA_ROOTS)
 	path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 	try:
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
@@ -94,7 +99,7 @@ def test_fastavro_compatibility_deserialize(
 				namespace,
 				schema_name,
 				schema_version,
-				output_fastavro,
+				output_fastavro.getvalue(),
 			)
 			output_fastavro.seek(0)
 			assert deserialized_data == fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
@@ -109,7 +114,7 @@ def test_fastavro_compatibility_deserialize(
 
 @pytest.mark.parametrize(
 	'schema_root, namespace, schema_name,schema_version',
-	cerializer.utils.iterate_over_schemata(SCHEMA_ROOTS),
+	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
 def test_codec_compatibility_serialize(
 	schema_root,
@@ -119,7 +124,7 @@ def test_codec_compatibility_serialize(
 	cerializer_instance,
 ):
 	# patch for not working avro codec
-	init_fastavro()
+	init_fastavro(SCHEMA_ROOTS)
 	try:
 		path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
@@ -141,8 +146,8 @@ def test_codec_compatibility_serialize(
 
 
 @pytest.mark.parametrize(
-	'schema_root, namespace, schema_name,schema_version',
-	cerializer.utils.iterate_over_schemata(SCHEMA_ROOTS),
+	'schema_root, namespace, schema_name, schema_version',
+	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
 def test_codec_compatibility_deserialize(
 	schema_root,
@@ -152,7 +157,7 @@ def test_codec_compatibility_deserialize(
 	cerializer_instance,
 ):
 	# patch for not working avro codec
-	init_fastavro()
+	init_fastavro(SCHEMA_ROOTS)
 	try:
 		path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
@@ -166,7 +171,7 @@ def test_codec_compatibility_deserialize(
 				namespace,
 				schema_name,
 				schema_version,
-				io.BytesIO(encoded),
+				encoded,
 			)
 			assert decoded == decoded_cerializer
 	except FileNotFoundError:
