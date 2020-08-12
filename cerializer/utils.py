@@ -1,15 +1,13 @@
 # pylint: disable=protected-access
 import copy
 import itertools
-import os
-from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union
+from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union, Optional
 
 import fastavro
-import yaml
 
 
 
-def correct_type(type_: str) -> str:
+def correct_type(type_: str) -> Optional[str]:
 	'''
 	Corrects the nuances between Avro type definitions and actual python type names.
 	'''
@@ -23,6 +21,7 @@ def correct_type(type_: str) -> str:
 		return 'float'
 	if type(type_) is str and type_ in ('int', 'null', 'float', 'bytes'):
 		return type_
+	return None
 
 
 def get_logical_type_constraint(schema: Dict[str, Any], location: str) -> str:
@@ -84,11 +83,11 @@ def cycle_detection(
 	This can happen when for example a schema is defined using itself eg. a tree schema.
 	This method add all cycle starting nodes in all schemata_database to cycle_starting_nodes set.
 	'''
-	if type(parsed_schema) is str and parsed_schema in visited:
+	if isinstance(parsed_schema, str) and parsed_schema in visited:
 		cycle_starting_nodes.add(parsed_schema)
-	elif type(parsed_schema) is dict:
+	elif isinstance(parsed_schema, dict):
 		name = parsed_schema.get('name')
-		type_ = parsed_schema.get('type')
+		type_ = parsed_schema['type']
 		if type(type_) is str and type_ in visited:
 			cycle_starting_nodes.add(type_)
 		elif name:
@@ -106,8 +105,8 @@ def cycle_detection(
 				cycle_detection(schema_database[type_], new_visited, cycle_starting_nodes, schema_database)
 
 
-def get_type_name(type_: Union[str, Dict[str, Any]]) -> Union[str, None]:
-	return type_ if type(type_) is str else type_.get('name')
+def get_type_name(type_: Union[str, Dict[str, Any]]) -> Optional[str]:
+	return type_ if isinstance(type_, str) else type_.get('name')
 
 
 

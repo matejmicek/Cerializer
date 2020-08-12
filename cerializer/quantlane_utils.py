@@ -26,24 +26,12 @@ def iterate_over_schemata(schema_roots: List[str]) -> Iterator[Tuple[str, str, s
 					yield schema_root, namespace, schema_name, int(version)
 
 
+
 # TODO Delete if not used
 def iterate_over_schema_roots(schema_roots: List[str]) -> Iterator[Tuple[str, str]]:
-	for schema_root in schema_roots:
-		schema_root = os.fsencode(schema_root)
-		for namespace in [f for f in os.listdir(schema_root) if not f.startswith(b'.')]:
-			for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith(b'.')]:
-				for version in [
-					f
-					for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
-					if not f.startswith(b'.')
-				]:
-					schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
-					schema_identifier = get_quantlane_schema_identifier(
-						namespace.decode(),
-						schema_name.decode(),
-						int(version.decode()),
-					)
-					yield schema_path.decode(), schema_identifier
+	for schema_root, namespace, schema_name, version in iterate_over_schemata(schema_roots):
+		path = os.path.join(schema_root, namespace, schema_name, str(version), 'schema.yaml')
+		yield path, get_quantlane_schema_identifier(namespace, schema_name, version)
 
 
 

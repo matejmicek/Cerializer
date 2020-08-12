@@ -1,3 +1,4 @@
+#cython: language_level=3
 '''
 This module deals with writing basic types. 
 Complex types are decomposed first in schema_parser.

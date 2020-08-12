@@ -1,5 +1,5 @@
 # pylint: disable=protected-access
-from typing import Any
+from typing import Any, List
 import distutils.core
 import hashlib
 import importlib.machinery
@@ -17,19 +17,19 @@ def compile_code(code: str) -> Any:
 
 
 def _load_dynamic(name: str, module_path: str) -> Any:
-	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module()
+	# mypy does not understand ExtensionFileLoader init
+	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module() # type: ignore
 
 
 def _cython_inline(
 	complete_code: str,
 	lib_dir: str = os.path.join(Cython.Utils.get_cython_cache_dir(), 'inline'),
-):
+) -> Any:
 	key = complete_code, sys.version_info, sys.executable, 3, Cython.__version__
 	module_name = '_cython_inline_' + hashlib.md5(str(key).encode('utf-8')).hexdigest()
 
 	build_extension = Cython.Build.Inline._get_build_extension()
-	_cython_inline.so_ext = build_extension.get_ext_filename('')
-	module_path = os.path.join(lib_dir, module_name + _cython_inline.so_ext)
+	module_path = os.path.join(lib_dir, module_name + build_extension.get_ext_filename(''))
 
 	code = []
 	for line in complete_code.split('\n'):
@@ -37,8 +37,8 @@ def _cython_inline(
 
 	if not os.path.exists(lib_dir):
 		os.makedirs(lib_dir)
-	cflags = []
-	c_include_dirs = []
+	cflags: List[str] = []
+	c_include_dirs: List[str] = []
 	module_code = '''
 #cython: language_level=3
 cimport write

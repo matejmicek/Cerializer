@@ -1,5 +1,5 @@
 # pylint: disable=protected-access
-from typing import Any, Dict, Hashable, List, Set, Union, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import jinja2
 
@@ -8,11 +8,12 @@ import cerializer.utils
 import constants.constants
 
 
+
 class CodeGenerator:
 	def __init__(
 		self,
 		jinja_env: jinja2.environment.Environment,
-		schemata: List[Tuple[str, Union[Dict[Hashable, Any]]]],
+		schemata: List[Tuple[str, Union[Dict[str, Any]]]],
 		buffer_name: str,
 	) -> None:
 		self.buffer_name = buffer_name
@@ -23,7 +24,6 @@ class CodeGenerator:
 		self.type_name_generator = cerializer.utils.name_generator('type')
 		self.int_name_generator = cerializer.utils.name_generator('i')
 		self.schema_database = cerializer.utils.get_subschemata(schemata)
-		self.schema_database
 		self.jinja_env = jinja_env
 		self.necessary_defs: Set[str] = set()
 		self.cycle_starting_nodes: Dict[str, str] = {}
@@ -52,7 +52,7 @@ class CodeGenerator:
 			prepare_params = f'{location}, {params}' if logical_type == 'decimal' else location
 			prepare_type = f'{data_type}_{logical_type}' if logical_type == 'decimal' else logical_type
 			return f'write.write_{data_type}({self.buffer_name}, prepare.prepare_{prepare_type}({prepare_params}))'
-		elif mode is constants.constants.SerializationMode.MODE_DESERIALIZE:
+		else:
 			prepare_params = (
 				f'read.read_{data_type}({read_params}), {params}'
 				if logical_type == 'decimal'
@@ -70,7 +70,7 @@ class CodeGenerator:
 			return self.generate_serialization_code(self.schema_database[type_], location)
 		return f'write.write_{type_}({self.buffer_name}, {location})'
 
-	def get_deserialization_function(self, type_: str, location: str, schema: Dict[str, Any] = None) -> str:
+	def get_deserialization_function(self, type_: str, location: str, schema: Optional[Dict[str, Any]] = None) -> str:
 		'''
 		Returns the corresponding deserialization function call string.
 		'''
@@ -127,32 +127,35 @@ class CodeGenerator:
 		symbols = schema['symbols']
 		return f'write.write_int({self.buffer_name}, {symbols}.index({location}))'
 
-	def get_enum_deserialization(self, schema, location) -> str:
+	def get_enum_deserialization(self, schema: Dict[str, Any], location: str) -> str:
 		'''
 		Return enum deserialization string.
 		'''
 		symbols = schema['symbols']
 		return f'{location} = {symbols}[read.read_int(fo)]'
 
-	def get_union_serialization(self, schema: Dict[str, Any], location: str, is_from_array: bool = False) -> str:
+	def get_union_serialization(self, schema: Union[List, Dict[str, Any]], location: str, is_from_array: bool = False) -> str:
 		'''
 		Return union serialization string.
 		'''
-		if len([item for item in schema if (type(item) is dict and item.get('type') == 'array')]) > 1:
+		if is_from_array:
+			# this is in case a union is not specified as a standalone type but is declared in array items
+			type_ = list(schema) # since this union schema came from an array, it has to be in list form
+			name = None
+			new_location = location
+		elif isinstance(schema, dict):
+			name = schema['name']
+			type_ = list(schema['type']) # schema['type'] has to be list since its a union schema
+			new_location = f"{location}['{name}']"
+
+		else:
+			raise NotImplementedError(f'Cant handle schema = {schema}')
+
+		if len([item for item in type_ if (isinstance(item, dict) and item.get('type') == 'array')]) > 1:
 			# this is documented in task CL-132
 			raise NotImplementedError(
 				'One of your schemas contains a union of more than one array types. This is not yet implemented.'
 			)
-
-		if is_from_array:
-			# this is in case a union is not specified as a standalone type but is declared in array items
-			type_ = schema
-			name = None
-			new_location = location
-		else:
-			name = schema['name']
-			type_ = schema['type']
-			new_location = f"{location}['{name}']"
 
 		possible_types_and_code = []
 		# we need to ensure that null is checked first
@@ -197,7 +200,7 @@ class CodeGenerator:
 
 	def get_union_deserialization(
 		self,
-		schema: Dict[str, Any],
+		schema: Union[List, Dict[str, Any]],
 		location: str,
 		is_from_array: bool = False,
 	) -> str:
@@ -209,10 +212,12 @@ class CodeGenerator:
 		if is_from_array:
 			types = schema
 			new_location = location
-		else:
+		elif isinstance(schema, dict):
 			name = schema['name']
 			types = schema['type']
 			new_location = f"{location}['{name}']"
+		else:
+			raise NotImplementedError(f'Cant handle schema = {schema}')
 		template = self.jinja_env.get_template('union_deserialization.jinja2')
 		return template.render(index_name = index_name, types = types, location = new_location)
 
@@ -300,15 +305,15 @@ class CodeGenerator:
 		self.necessary_defs = set()
 		return rendered_template
 
-	def generate_serialization_code(self, schema: Dict[str, Any], location: str) -> str:
+	def generate_serialization_code(self, schema: Union[str, List, Dict[str, Any]], location: str) -> str:
 		'''
 		Driver function to handle code generation for a schema.
 		'''
-		if type(schema) is str:
+		if isinstance(schema, str):
 			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_SERIALIZE, schema, location)
 			return self.get_serialization_function(schema, location)
-		if type(schema) is list:
+		if isinstance(schema, list):
 			return self.get_union_serialization(schema, location, is_from_array = True)
 		type_ = schema['type']
 		if 'logicalType' in schema:
@@ -334,7 +339,7 @@ class CodeGenerator:
 			name = schema['name']
 			new_location = f"{location}['{name}']"
 			default_if_necessary = cerializer.utils.default_if_necessary(new_location, schema.get('default'))
-			return default_if_necessary + '\n' + self.generate_serialization_code(type_, new_location)
+			return str(default_if_necessary + '\n' + self.generate_serialization_code(type_, new_location))
 		elif type(type_) is list:
 			return self.get_union_serialization(schema, location)
 		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
@@ -342,65 +347,70 @@ class CodeGenerator:
 			if name:
 				location = f"{location}['{name}']"
 			default_if_necessary = cerializer.utils.default_if_necessary(location, schema.get('default'))
-			return default_if_necessary + '\n' + self.get_serialization_function(type_, location)
+			return str(default_if_necessary + '\n' + self.get_serialization_function(type_, location))
 		elif type(type_) is str and type_ in self.schema_database:
 			if type_ in self.cycle_starting_nodes:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_SERIALIZE, type_, location)
 			name = schema['name']
 			new_location = f"{location}['{name}']"
 			return self.generate_serialization_code(self.schema_database[type_], new_location)
+		raise NotImplementedError(f'Cant handle schema = {schema}')
 
-	def generate_deserialization_code(self, schema: Union[Dict[Hashable, Any], list, None], location: str) -> str:
+
+	def generate_deserialization_code(self, schema: Union[Dict[str, Any], list, str], location: str) -> str:
 		'''
 		Driver function to handle code generation for a schema.
 		'''
-		if type(schema) is str:
+		if isinstance(schema, str):
 			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_DESERIALIZE, schema, location)
 			return self.get_deserialization_function(schema, location)
-		if type(schema) is list:
+		if isinstance(schema, list):
 			return self.get_union_deserialization(schema, location, is_from_array = True)
-		type_ = schema['type']
-		if 'logicalType' in schema:
-			prepared = self.prepare(
-				constants.constants.SerializationMode.MODE_DESERIALIZE,
-				schema['logicalType'],
-				type_,
-				location,
-				schema,
-			)
-			return prepared
-		elif type_ == constants.constants.RECORD:
-			field_deserialization = '\n'.join(
-				(self.generate_deserialization_code(field, location))
-				for field in schema['fields']
-			)
-			return location + ' = {}\n' + field_deserialization
-		elif type_ == constants.constants.ARRAY:
-			return self.get_array_deserialization(schema, location)
-		elif type_ == constants.constants.ENUM:
-			return self.get_enum_deserialization(schema, location)
-		elif type_ == constants.constants.MAP:
-			return self.get_map_deserialization(schema, location)
-		elif type_ == constants.constants.FIXED:
-			return self.get_deserialization_function(type_, location, schema = schema)
-		elif type(type_) is dict:
-			name = schema['name']
-			new_location = f"{location}['{name}']"
-			return self.generate_deserialization_code(type_, new_location)
-		elif type(type_) is list:
-			return self.get_union_deserialization(schema, location)
-		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
-			name = schema.get('name')
-			if name:
-				location = f"{location}['{name}']"
-			return self.get_deserialization_function(type_, location, schema = schema)
-		elif type(type_) is str and type_ in self.schema_database:
-			if type_ in self.cycle_starting_nodes:
-				return self.handle_cycle(constants.constants.SerializationMode.MODE_DESERIALIZE, type_, location)
-			name = schema['name']
-			new_location = f"{location}['{name}']"
-			return self.generate_deserialization_code(self.schema_database[type_], new_location)
+		if isinstance(schema, dict):
+			type_ = schema['type']
+			if 'logicalType' in schema:
+				prepared = self.prepare(
+					constants.constants.SerializationMode.MODE_DESERIALIZE,
+					schema['logicalType'],
+					type_,
+					location,
+					schema,
+				)
+				return prepared
+			elif type_ == constants.constants.RECORD:
+				field_deserialization = '\n'.join(
+					(self.generate_deserialization_code(field, location))
+					for field in schema['fields']
+				)
+				return location + ' = {}\n' + field_deserialization
+			elif type_ == constants.constants.ARRAY:
+				return self.get_array_deserialization(schema, location)
+			elif type_ == constants.constants.ENUM:
+				return self.get_enum_deserialization(schema, location)
+			elif type_ == constants.constants.MAP:
+				return self.get_map_deserialization(schema, location)
+			elif type_ == constants.constants.FIXED:
+				return self.get_deserialization_function(type_, location, schema = schema)
+			elif type(type_) is dict:
+				name = schema['name']
+				new_location = f"{location}['{name}']"
+				return self.generate_deserialization_code(type_, new_location)
+			elif type(type_) is list:
+				return self.get_union_deserialization(schema, location)
+			elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
+				name = schema.get('name')
+				if name:
+					location = f"{location}['{name}']"
+				return self.get_deserialization_function(type_, location, schema = schema)
+			elif type(type_) is str and type_ in self.schema_database:
+				if type_ in self.cycle_starting_nodes:
+					return self.handle_cycle(constants.constants.SerializationMode.MODE_DESERIALIZE, type_, location)
+				name = schema['name']
+				new_location = f"{location}['{name}']"
+				return self.generate_deserialization_code(self.schema_database[type_], new_location)
+		raise NotImplementedError(f'Cant handle schema = {schema}')
+
 
 	def handle_cycle(self, mode: constants.constants.SerializationMode, schema: str, location: str) -> str:
 		normalised_type = schema.replace(':', '_').replace('.', '_')
@@ -430,7 +440,7 @@ class CodeGenerator:
 		serialization_function_call = serialization_function.replace('(data,', f'({location},')
 		if mode is constants.constants.SerializationMode.MODE_SERIALIZE:
 			return f'output.write(buffer)\nbuffer = bytearray()\n{serialization_function_call}'
-		elif mode is constants.constants.SerializationMode.MODE_DESERIALIZE:
+		else:
 			return f'{location} = {deserialization_function}'
 
 	def add_cdef(self, type_: str, name: str) -> None:
@@ -443,7 +453,7 @@ class CodeGenerator:
 		location: str,
 		key: str,
 		first: bool,
-		value = None,
+		value: Optional[str] = None,
 	) -> str:
 		# value is filled when we are passing in a name of a local variable rather then a dict and a string
 		if value:
@@ -462,25 +472,25 @@ class CodeGenerator:
 			else:
 				constraint = f'type({full_location}) is {cerializer.utils.correct_type(type_)}'
 
-		elif type(type_) is dict and type_.get('type') == 'fixed':
+		elif isinstance(type_, dict) and type_.get('type') == 'fixed':
 			constraint = f'type({full_location}) is bytes'
 
-		elif type(type_) is dict and type_.get('type') == 'array':
+		elif isinstance(type_, dict) and type_.get('type') == 'array':
 			constraint = f'type({full_location}) is list'
 
-		elif type(type_) is dict and type_.get('type') == 'map':
+		elif isinstance(type_, dict) and type_.get('type') == 'map':
 			constraint = f'type({full_location}) is dict'
 
-		elif type(type_) is dict and type_.get('type') == 'enum':
+		elif isinstance(type_, dict) and type_.get('type') == 'enum':
 			constraint = f'type({full_location}) is str and {full_location} in {type_["symbols"]}'
 
-		elif type(type_) is dict and type_.get('logicalType') is not None:
+		elif isinstance(type_, dict) and type_.get('logicalType') is not None:
 			constraint = cerializer.utils.get_logical_type_constraint(type_, full_location)
 
-		elif type(type_) is str and type_ in self.schema_database:
+		elif isinstance(type_, str) and type_ in self.schema_database:
 			return self.correct_constraint(self.schema_database[type_], location, key, first, value)
 
-		elif type(type_) is dict and type_['type'] == 'record':
+		elif isinstance(type_, dict) and type_['type'] == 'record':
 			# TODO adjust for different dict types
 			constraint = f'type({full_location}) is dict'
 
@@ -489,6 +499,6 @@ class CodeGenerator:
 		raise RuntimeError(f'invalid constraint for type == {type_}')
 
 
-	def acknowledge_new_schemata(self, schemata: List[Tuple[str, Dict[str, Any]]]):
+	def acknowledge_new_schemata(self, schemata: List[Tuple[str, Dict[str, Any]]]) -> None:
 		new_subschemata = cerializer.utils.get_subschemata(schemata)
 		self.schema_database = {**self.schema_database, **new_subschemata}

@@ -228,6 +228,3 @@ def benchmark(schema_roots, count = 100000) -> str:
 			table.add_row(row)
 		tables.append(table.draw())
 	return '\n\n\n'.join(tables)
-
-
-print(benchmark(SCHEMA_ROOTS, 100000))

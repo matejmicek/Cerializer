@@ -1,3 +1,5 @@
+#cython: language_level=3
+
 cdef mk_bits(bits)
 
 cdef mk_bits(bits)

@@ -17,8 +17,8 @@ import cerializer.utils
 MAGIC_BYTE = b'\x00'
 
 # developer specific path. Serves only as an example.
-SCHEMA_ROOT1 = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
-SCHEMA_ROOT2 = '/Users/matejmicek/PycharmProjects/schema_root'
+SCHEMA_ROOT1 = '/home/development/work/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT2 = '/home/development/root_schemata'
 
 SCHEMA_ROOTS = [SCHEMA_ROOT1, SCHEMA_ROOT2]
 
