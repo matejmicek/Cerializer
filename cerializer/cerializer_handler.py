@@ -27,7 +27,7 @@ class Cerializer:
 		self.env = jinja2.Environment(loader = jinja2.FileSystemLoader(searchpath = '../templates'))
 		self.env.globals['env'] = self.env
 		self.code_generator = cerializer.schema_handler.CodeGenerator(self.env, schemata, 'buffer')
-		self.update_code()
+		self.update_code(schemata)
 
 	def deserialize(self, namespace: str, schema_name: str, data: bytes) -> Any:
 		data_io = io.BytesIO(data)

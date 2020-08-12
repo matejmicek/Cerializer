@@ -8,11 +8,12 @@ import yaml
 import cerializer.cerializer_handler
 import cerializer.tests.test_cerializer_compatibility
 import cerializer.utils
+import cerializer.quantlane_utils
 import logwood
 
 
 # developer specific path. Serves only as an example.
-SCHEMA_ROOT = '/home/development/work/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
 
 SCHEMA_ROOTS = [SCHEMA_ROOT]
 
@@ -36,7 +37,8 @@ import json
 import io
 import yaml
 import datetime
-import cerializer.cerializer_handler as c
+import cerializer.cerializer_handler
+import cerializer
 from decimal import Decimal
 from uuid import UUID
 import schemachinery.codec.avro_schemata
@@ -60,8 +62,8 @@ except:
 
 avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*{schema_roots})
 codec = schemachinery.codec.avro_codec.AvroCodec(avro_schemata, '{namespace}', '{schema_name}', {schema_version})
-
-x = c.Cerializer({schema_roots}).code['{schema_identifier}']['deserialize']
+schemata = cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
+x = cerializer.cerializer_handler.Cerializer(schemata).code['{schema_identifier}']['deserialize']
 	'''
 
 	score_string_cerializer = timeit.timeit(
@@ -109,7 +111,8 @@ import json
 import io
 import yaml
 import datetime
-import cerializer.cerializer_handler as c
+import cerializer.cerializer_handler
+import cerializer
 from decimal import Decimal
 from uuid import UUID
 import schemachinery.codec.avro_schemata
@@ -126,7 +129,8 @@ buff = io.BytesIO()
 avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*{schema_roots})
 codec = schemachinery.codec.avro_codec.AvroCodec(avro_schemata, '{namespace}', '{schema_name}', {schema_version})
 
-x = c.Cerializer({schema_roots}).code['{schema_identifier}']['serialize']
+schemata = cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
+x = cerializer.cerializer_handler.Cerializer(schemata).code['{schema_identifier}']['serialize']
 	'''
 
 	score_string_cerializer = timeit.timeit(stmt = 'x(data, buff)', setup = setup, number = count)
@@ -155,7 +159,7 @@ def benchmark(schema_roots, count = 100000) -> str:
 	# this hes to be here because of logs from schema poller
 	logwood.basic_config()
 	cerializer.tests.test_cerializer_compatibility.init_fastavro(SCHEMA_ROOTS)
-	schemata = list(cerializer.utils.iterate_over_schemata(schema_roots))
+	schemata = list(cerializer.quantlane_utils.iterate_over_schemata(schema_roots))
 	table_results_serialize: List[Tuple[Any, Any, Any]] = []
 	table_results_deserialize: List[Tuple[Any, Any, Any]] = []
 	table_results_roundtrip: List[Tuple[Any, Any, Any]] = []
@@ -170,7 +174,7 @@ def benchmark(schema_roots, count = 100000) -> str:
 			schema_favro = SCHEMA_FAVRO,
 			count = count,
 			schema_name = schema,
-			schema_identifier = cerializer.utils.get_schema_identifier(namespace, schema, version),
+			schema_identifier = cerializer.quantlane_utils.get_quantlane_schema_identifier(namespace, schema, version),
 		)
 
 		result_serialize = _benchmark_schema_serialize(
@@ -181,7 +185,7 @@ def benchmark(schema_roots, count = 100000) -> str:
 			schema_favro = SCHEMA_FAVRO,
 			count = count,
 			schema_name = schema,
-			schema_identifier = cerializer.utils.get_schema_identifier(namespace, schema, version),
+			schema_identifier = cerializer.quantlane_utils.get_quantlane_schema_identifier(namespace, schema, version),
 		)
 
 		table_results_serialize.append(
@@ -226,4 +230,4 @@ def benchmark(schema_roots, count = 100000) -> str:
 	return '\n\n\n'.join(tables)
 
 
-print(benchmark(SCHEMA_ROOTS, 10))
+print(benchmark(SCHEMA_ROOTS, 100000))

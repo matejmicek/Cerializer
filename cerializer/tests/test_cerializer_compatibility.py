@@ -16,8 +16,9 @@ import cerializer.utils
 
 MAGIC_BYTE = b'\x00'
 
-SCHEMA_ROOT1 = '/home/development/root_schemata'
-SCHEMA_ROOT2 = '/home/development/work/Cerializer/cerializer/tests/schemata'
+# developer specific path. Serves only as an example.
+SCHEMA_ROOT1 = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT2 = '/Users/matejmicek/PycharmProjects/schema_root'
 
 SCHEMA_ROOTS = [SCHEMA_ROOT1, SCHEMA_ROOT2]
 
@@ -31,7 +32,8 @@ def prefix(version):
 
 
 def init_fastavro(schema_roots):
-	for schema_identifier, subschema in cerializer.utils.get_subschemata(schema_roots).items():
+	schemata = cerializer.quantlane_utils.schema_roots_to_schemata(schema_roots)
+	for schema_identifier, subschema in cerializer.utils.get_subschemata(schemata).items():
 		fastavro._schema_common.SCHEMA_DEFS[schema_identifier] = subschema  # pylint: disable = protected-access
 
 
@@ -63,7 +65,8 @@ def test_fastavro_compatibility_serialize(
 			output_fastavro = io.BytesIO()
 			output_cerializer = io.BytesIO()
 			fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
-			cerializer_instance.serialize(namespace, schema_name, schema_version, data, output_cerializer)
+			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
+			cerializer_instance.serialize(namespace, schema_name, data, output_cerializer)
 			assert output_cerializer.getvalue() == output_fastavro.getvalue()
 	except FileNotFoundError:
 		logging.warning(
@@ -95,10 +98,10 @@ def test_fastavro_compatibility_deserialize(
 			output_fastavro = io.BytesIO()
 			fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
 			output_fastavro.seek(0)
+			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
 			deserialized_data = cerializer_instance.deserialize(
 				namespace,
 				schema_name,
-				schema_version,
 				output_fastavro.getvalue(),
 			)
 			output_fastavro.seek(0)
@@ -134,7 +137,8 @@ def test_codec_compatibility_serialize(
 			encoded = codec.encode(data)
 			assert not encoded == io.BytesIO()
 			output_cerializer = io.BytesIO()
-			cerializer_instance.serialize(namespace, schema_name, schema_version, data, output_cerializer)
+			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
+			cerializer_instance.serialize(namespace, schema_name, data, output_cerializer)
 			assert encoded == prefix(schema_version) + output_cerializer.getvalue()
 	except FileNotFoundError:
 		logging.warning(
@@ -167,10 +171,10 @@ def test_codec_compatibility_deserialize(
 			encoded = codec.encode(data)
 			decoded = codec.decode(encoded)
 			encoded = encoded[len(prefix(schema_version)) :]
+			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
 			decoded_cerializer = cerializer_instance.deserialize(
 				namespace,
 				schema_name,
-				schema_version,
 				encoded,
 			)
 			assert decoded == decoded_cerializer

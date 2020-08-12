@@ -53,12 +53,11 @@ def parse_schema(schema: Union[Dict[Hashable, Any], list, None]) -> Any:
 
 def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Any]:
 	schema_database: Dict[str, Any] = {}
-	if schemata:
-		for schema_identifier, schema in schemata:
-			parsed_schema = parse_schema(schema)
-			if '.' in schema_identifier:
-				schema_database[schema_identifier] = fastavro.parse_schema(parsed_schema)
-			scan_schema_for_subschemata(parsed_schema, schema_database)
+	for schema_identifier, schema in schemata:
+		parsed_schema = parse_schema(schema)
+		if '.' in schema_identifier:
+			schema_database[schema_identifier] = fastavro.parse_schema(parsed_schema)
+		scan_schema_for_subschemata(parsed_schema, schema_database)
 	return schema_database
 
 

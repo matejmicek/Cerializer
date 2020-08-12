@@ -23,6 +23,7 @@ class CodeGenerator:
 		self.type_name_generator = cerializer.utils.name_generator('type')
 		self.int_name_generator = cerializer.utils.name_generator('i')
 		self.schema_database = cerializer.utils.get_subschemata(schemata)
+		self.schema_database
 		self.jinja_env = jinja_env
 		self.necessary_defs: Set[str] = set()
 		self.cycle_starting_nodes: Dict[str, str] = {}
@@ -276,6 +277,7 @@ class CodeGenerator:
 		self.jinja_env.globals['generate_serialization_code'] = self.generate_serialization_code
 		self.jinja_env.globals['generate_deserialization_code'] = self.generate_deserialization_code
 		self.jinja_env.globals['get_type_name'] = cerializer.utils.get_type_name
+		schema = cerializer.utils.parse_schema(schema)
 		location = 'data'
 		# This is here because if schema name XYZ is defined in this file and also
 		# somewhere else in the schema repo, the definition from this file has to be considered first
