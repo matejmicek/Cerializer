@@ -13,9 +13,10 @@ import logwood
 
 
 # developer specific path. Serves only as an example.
-SCHEMA_ROOT = '/Users/matejmicek/PycharmProjects/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT1 = '/home/development/root_schemata'
+SCHEMA_ROOT2 = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
-SCHEMA_ROOTS = [SCHEMA_ROOT]
+SCHEMA_ROOTS = [SCHEMA_ROOT2]
 
 
 def _benchmark_schema_deserialize(
@@ -26,7 +27,6 @@ def _benchmark_schema_deserialize(
 	schema_name: str,
 	schema_version: int,
 	namespace: str,
-	schema_identifier: str,
 ) -> Tuple:
 	'''
 	Helper function. This should not be used on its own. Use benchmark() instead.
@@ -40,7 +40,6 @@ import datetime
 import cerializer.cerializer_handler
 import cerializer
 from decimal import Decimal
-from uuid import UUID
 import schemachinery.codec.avro_schemata
 import schemachinery.codec.avro_codec
 import cerializer.tests.test_cerializer_compatibility
@@ -55,6 +54,7 @@ serialized_data.seek(0)
 
 prefix = cerializer.tests.test_cerializer_compatibility.prefix({schema_version})
 serialized_data_bytes = prefix + serialized_data.getvalue()
+serialized_data_bytes_cerializer = serialized_data.getvalue()
 try:
 	json_data = json.dumps(data)
 except: 
@@ -63,11 +63,11 @@ except:
 avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*{schema_roots})
 codec = schemachinery.codec.avro_codec.AvroCodec(avro_schemata, '{namespace}', '{schema_name}', {schema_version})
 schemata = cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
-x = cerializer.cerializer_handler.Cerializer(schemata).code['{schema_identifier}']['deserialize']
+cerializer_codec = cerializer.cerializer_handler.Cerializer(schemata, '{namespace}', '{schema_name}:{schema_version}')
 	'''
 
 	score_string_cerializer = timeit.timeit(
-		stmt = 'serialized_data.seek(0)\n' 'y = x(serialized_data)',
+		stmt = 'serialized_data.seek(0)\n' 'y = cerializer_codec.deserialize(serialized_data_bytes_cerializer)',
 		setup = setup,
 		number = count,
 	)
@@ -98,7 +98,6 @@ def _benchmark_schema_serialize(
 	path: str,
 	count: int,
 	schema_name: str,
-	schema_identifier: str,
 	schema_version,
 	namespace,
 ) -> Tuple:
@@ -112,9 +111,7 @@ import io
 import yaml
 import datetime
 import cerializer.cerializer_handler
-import cerializer
 from decimal import Decimal
-from uuid import UUID
 import schemachinery.codec.avro_schemata
 import schemachinery.codec.avro_codec
 
@@ -123,17 +120,20 @@ schema_favro = {schema_favro}
 data = list(yaml.unsafe_load_all(open('{path}' + 'example.yaml')))[0]
 parsed_schema = fastavro.parse_schema(schema_favro)
 output = io.BytesIO()
-buff = io.BytesIO()
 
 
 avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*{schema_roots})
 codec = schemachinery.codec.avro_codec.AvroCodec(avro_schemata, '{namespace}', '{schema_name}', {schema_version})
 
 schemata = cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
-x = cerializer.cerializer_handler.Cerializer(schemata).code['{schema_identifier}']['serialize']
+cerializer_codec = cerializer.cerializer_handler.Cerializer(schemata, '{namespace}', '{schema_name}:{schema_version}')
 	'''
 
-	score_string_cerializer = timeit.timeit(stmt = 'x(data, buff)', setup = setup, number = count)
+	score_string_cerializer = timeit.timeit(
+		stmt = 'encoded = cerializer_codec.serialize(data)',
+		setup = setup,
+		number = count,
+	)
 	score_fastavro_serialize = timeit.timeit(
 		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
 		setup = setup,
@@ -174,7 +174,6 @@ def benchmark(schema_roots, count = 100000) -> str:
 			schema_favro = SCHEMA_FAVRO,
 			count = count,
 			schema_name = schema,
-			schema_identifier = cerializer.quantlane_utils.get_quantlane_schema_identifier(namespace, schema, version),
 		)
 
 		result_serialize = _benchmark_schema_serialize(
@@ -185,28 +184,27 @@ def benchmark(schema_roots, count = 100000) -> str:
 			schema_favro = SCHEMA_FAVRO,
 			count = count,
 			schema_name = schema,
-			schema_identifier = cerializer.quantlane_utils.get_quantlane_schema_identifier(namespace, schema, version),
 		)
 
 		table_results_serialize.append(
 			(
-				result_serialize[1] / result_serialize[0],
-				result_serialize[2] / result_serialize[0],
-				result_serialize[3] / result_serialize[0],
+				f'{(result_serialize[1] / result_serialize[0]):.3f}\n{result_serialize[1]:.3f}',
+				f'{(result_serialize[2] / result_serialize[0]):.3f}\n{result_serialize[2]:.3f}',
+				f'{(result_serialize[3] / result_serialize[0]):.3f}\n{result_serialize[3]:.3f}',
 			)
 		)
 		table_results_deserialize.append(
 			(
-				result_deserialize[1] / result_deserialize[0],
-				result_deserialize[2] / result_deserialize[0],
-				result_deserialize[3] / result_deserialize[0],
+				f'{(result_deserialize[1] / result_deserialize[0]):.3f}\n{result_deserialize[1]:.3f}',
+				f'{(result_deserialize[2] / result_deserialize[0]):.3f}\n{result_deserialize[2]:.3f}',
+				f'{(result_deserialize[3] / result_deserialize[0]):.3f}\n{result_deserialize[3]:.3f}',
 			)
 		)
 		table_results_roundtrip.append(
 			(
-				(result_deserialize[1] + result_serialize[1]) / (result_deserialize[0] + result_serialize[0]),
-				(result_deserialize[2] + result_serialize[2]) / (result_deserialize[0] + result_serialize[0]),
-				(result_deserialize[3] + result_serialize[3]) / (result_deserialize[0] + result_serialize[0]),
+				f'{((result_deserialize[1] + result_serialize[1]) / (result_deserialize[0] + result_serialize[0])):.3f}\n{(result_deserialize[1] + result_serialize[1]):.3f}',
+				f'{((result_deserialize[2] + result_serialize[2]) / (result_deserialize[0] + result_serialize[0])):.3f}\n{(result_deserialize[2] + result_serialize[2]):.3f}',
+				f'{((result_deserialize[3] + result_serialize[3]) / (result_deserialize[0] + result_serialize[0])):.3f}\n{(result_deserialize[3] + result_serialize[3]):.3f}',
 			)
 		)
 

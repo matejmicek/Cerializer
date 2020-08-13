@@ -6,7 +6,6 @@ from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union, Optio
 import fastavro
 
 
-
 def correct_type(type_: str) -> Optional[str]:
 	'''
 	Corrects the nuances between Avro type definitions and actual python type names.
@@ -47,7 +46,10 @@ def parse_schema(schema: Union[Dict[Hashable, Any], list, None]) -> Any:
 			return parsed
 		except fastavro.schema.UnknownType as e:
 			# we ignore missing schema errors since we are going to fill them in later
-			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
+			try:
+				fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
+			except AttributeError:
+				fastavro._schema_common.SCHEMA_DEFS = {}
 
 
 def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Any]:
@@ -107,7 +109,6 @@ def cycle_detection(
 
 def get_type_name(type_: Union[str, Dict[str, Any]]) -> Optional[str]:
 	return type_ if isinstance(type_, str) else type_.get('name')
-
 
 
 def default_if_necessary(location: str, default: Any) -> str:

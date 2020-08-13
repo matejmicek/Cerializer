@@ -1,4 +1,5 @@
 # pylint: disable=protected-access
+import os
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import jinja2
@@ -8,15 +9,9 @@ import cerializer.utils
 import constants.constants
 
 
-
 class CodeGenerator:
-	def __init__(
-		self,
-		jinja_env: jinja2.environment.Environment,
-		schemata: List[Tuple[str, Union[Dict[str, Any]]]],
-		buffer_name: str,
-	) -> None:
-		self.buffer_name = buffer_name
+	def __init__(self, schemata: List[Tuple[str, Dict[str, Any]]]) -> None:
+		self.buffer_name = 'buffer'
 		self.cdefs: List[str] = []
 		self.dict_name_generator = cerializer.utils.name_generator('d_dict')
 		self.val_name_generator = cerializer.utils.name_generator('val')
@@ -24,7 +19,12 @@ class CodeGenerator:
 		self.type_name_generator = cerializer.utils.name_generator('type')
 		self.int_name_generator = cerializer.utils.name_generator('i')
 		self.schema_database = cerializer.utils.get_subschemata(schemata)
-		self.jinja_env = jinja_env
+		self.jinja_env = jinja2.Environment(
+			loader = jinja2.FileSystemLoader(
+				searchpath = os.path.join(constants.constants.PROJECT_ROOT, 'cerializer', 'templates')
+			)
+		)
+		self.jinja_env.globals['env'] = self.jinja_env
 		self.necessary_defs: Set[str] = set()
 		self.cycle_starting_nodes: Dict[str, str] = {}
 		self.init_cycles()
@@ -70,7 +70,12 @@ class CodeGenerator:
 			return self.generate_serialization_code(self.schema_database[type_], location)
 		return f'write.write_{type_}({self.buffer_name}, {location})'
 
-	def get_deserialization_function(self, type_: str, location: str, schema: Optional[Dict[str, Any]] = None) -> str:
+	def get_deserialization_function(
+		self,
+		type_: str,
+		location: str,
+		schema: Optional[Dict[str, Any]] = None,
+	) -> str:
 		'''
 		Returns the corresponding deserialization function call string.
 		'''
@@ -134,18 +139,23 @@ class CodeGenerator:
 		symbols = schema['symbols']
 		return f'{location} = {symbols}[read.read_int(fo)]'
 
-	def get_union_serialization(self, schema: Union[List, Dict[str, Any]], location: str, is_from_array: bool = False) -> str:
+	def get_union_serialization(
+		self,
+		schema: Union[List, Dict[str, Any]],
+		location: str,
+		is_from_array: bool = False,
+	) -> str:
 		'''
 		Return union serialization string.
 		'''
 		if is_from_array:
 			# this is in case a union is not specified as a standalone type but is declared in array items
-			type_ = list(schema) # since this union schema came from an array, it has to be in list form
+			type_ = list(schema)  # since this union schema came from an array, it has to be in list form
 			name = None
 			new_location = location
 		elif isinstance(schema, dict):
 			name = schema['name']
-			type_ = list(schema['type']) # schema['type'] has to be list since its a union schema
+			type_ = list(schema['type'])  # schema['type'] has to be list since its a union schema
 			new_location = f"{location}['{name}']"
 
 		else:
@@ -273,6 +283,12 @@ class CodeGenerator:
 			for starting_node in cycle_starting_nodes:
 				self.cycle_starting_nodes[starting_node] = self.render_code(self.schema_database[starting_node])
 
+	def render_code_with_wraparounds(self, schema: Dict[str, Any]) -> str:
+		code = self.render_code(schema = schema)
+		meta_template = self.jinja_env.get_template('meta_template.jinja2')
+		rendered_code = meta_template.render(code = code)
+		return rendered_code
+
 	def render_code(self, schema: Dict[str, Any]) -> str:
 		'''
 		Renders code for a given schema into a .pyx file.
@@ -294,7 +310,7 @@ class CodeGenerator:
 		deserialization_code = '\n'.join(self.cdefs) + '\n' + deserialization_code
 
 		template = self.jinja_env.get_template('template.jinja2')
-		rendered_template = template.render(
+		rendered_body = template.render(
 			location = location,
 			buffer_name = self.buffer_name,
 			serialization_code = serialization_code,
@@ -303,7 +319,7 @@ class CodeGenerator:
 		)
 		self.cdefs = []
 		self.necessary_defs = set()
-		return rendered_template
+		return rendered_body
 
 	def generate_serialization_code(self, schema: Union[str, List, Dict[str, Any]], location: str) -> str:
 		'''
@@ -355,7 +371,6 @@ class CodeGenerator:
 			new_location = f"{location}['{name}']"
 			return self.generate_serialization_code(self.schema_database[type_], new_location)
 		raise NotImplementedError(f'Cant handle schema = {schema}')
-
 
 	def generate_deserialization_code(self, schema: Union[Dict[str, Any], list, str], location: str) -> str:
 		'''
@@ -410,7 +425,6 @@ class CodeGenerator:
 				new_location = f"{location}['{name}']"
 				return self.generate_deserialization_code(self.schema_database[type_], new_location)
 		raise NotImplementedError(f'Cant handle schema = {schema}')
-
 
 	def handle_cycle(self, mode: constants.constants.SerializationMode, schema: str, location: str) -> str:
 		normalised_type = schema.replace(':', '_').replace('.', '_')
@@ -497,7 +511,6 @@ class CodeGenerator:
 		if constraint:
 			return f'{"if" if first else "elif"} {constraint}:'
 		raise RuntimeError(f'invalid constraint for type == {type_}')
-
 
 	def acknowledge_new_schemata(self, schemata: List[Tuple[str, Dict[str, Any]]]) -> None:
 		new_subschemata = cerializer.utils.get_subschemata(schemata)

@@ -17,10 +17,12 @@ import cerializer.utils
 MAGIC_BYTE = b'\x00'
 
 # developer specific path. Serves only as an example.
-SCHEMA_ROOT1 = '/home/development/work/Cerializer/cerializer/tests/schemata'
-SCHEMA_ROOT2 = '/home/development/root_schemata'
+SCHEMA_ROOT1 = '/home/development/root_schemata'
+SCHEMA_ROOT2 = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
-SCHEMA_ROOTS = [SCHEMA_ROOT1, SCHEMA_ROOT2]
+
+SCHEMA_ROOTS = [SCHEMA_ROOT2]
+
 
 @pytest.fixture(scope = 'module')
 def schemata():
@@ -37,25 +39,19 @@ def init_fastavro(schema_roots):
 		fastavro._schema_common.SCHEMA_DEFS[schema_identifier] = subschema  # pylint: disable = protected-access
 
 
-@pytest.fixture(scope = 'module')
-def cerializer_instance(schemata):
-	return cerializer.cerializer_handler.Cerializer(schemata)
-
-
 @pytest.mark.parametrize(
 	'schema_root, namespace, schema_name,schema_version',
 	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
-def test_fastavro_compatibility_serialize(
-	schema_root,
-	namespace,
-	schema_name,
-	schema_version,
-	cerializer_instance,
-):
+def test_fastavro_compatibility_serialize(schema_root, namespace, schema_name, schema_version, schemata):
 	# patch for not working avro codec
 	init_fastavro(SCHEMA_ROOTS)
 	path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
+	cerializer_codec = cerializer.cerializer_handler.Cerializer(
+		schemata = schemata,
+		namespace = namespace,
+		schema_name = f'{schema_name}:{schema_version}',
+	)
 	try:
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
 		SCHEMA_FAVRO = fastavro.parse_schema(
@@ -63,11 +59,10 @@ def test_fastavro_compatibility_serialize(
 		)
 		for data in data_all:
 			output_fastavro = io.BytesIO()
-			output_cerializer = io.BytesIO()
 			fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
 			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
-			cerializer_instance.serialize(namespace, schema_name, data, output_cerializer)
-			assert output_cerializer.getvalue() == output_fastavro.getvalue()
+			output_cerializer = cerializer_codec.serialize(data)
+			assert output_cerializer == output_fastavro.getvalue()
 	except FileNotFoundError:
 		logging.warning(
 			'Missing schema or Example file for schema == %s and version == %s',
@@ -81,16 +76,15 @@ def test_fastavro_compatibility_serialize(
 	'schema_root, namespace, schema_name,schema_version',
 	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
-def test_fastavro_compatibility_deserialize(
-	schema_root,
-	namespace,
-	schema_name,
-	schema_version,
-	cerializer_instance,
-):
+def test_fastavro_compatibility_deserialize(schema_root, namespace, schema_name, schema_version, schemata):
 	# patch for not working avro codec
 	init_fastavro(SCHEMA_ROOTS)
 	path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
+	cerializer_codec = cerializer.cerializer_handler.Cerializer(
+		schemata,
+		namespace,
+		f'{schema_name}:{schema_version}',
+	)
 	try:
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
 		SCHEMA_FAVRO = yaml.load(open(os.path.join(path, 'schema.yaml')), Loader = yaml.Loader)
@@ -99,11 +93,7 @@ def test_fastavro_compatibility_deserialize(
 			fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
 			output_fastavro.seek(0)
 			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
-			deserialized_data = cerializer_instance.deserialize(
-				namespace,
-				schema_name,
-				output_fastavro.getvalue(),
-			)
+			deserialized_data = cerializer_codec.deserialize(output_fastavro.getvalue())
 			output_fastavro.seek(0)
 			assert deserialized_data == fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
 	except FileNotFoundError:
@@ -119,15 +109,14 @@ def test_fastavro_compatibility_deserialize(
 	'schema_root, namespace, schema_name,schema_version',
 	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
-def test_codec_compatibility_serialize(
-	schema_root,
-	namespace,
-	schema_name,
-	schema_version,
-	cerializer_instance,
-):
+def test_codec_compatibility_serialize(schema_root, namespace, schema_name, schema_version, schemata):
 	# patch for not working avro codec
 	init_fastavro(SCHEMA_ROOTS)
+	cerializer_codec = cerializer.cerializer_handler.Cerializer(
+		schemata,
+		namespace,
+		f'{schema_name}:{schema_version}',
+	)
 	try:
 		path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
@@ -136,10 +125,9 @@ def test_codec_compatibility_serialize(
 		for data in data_all:
 			encoded = codec.encode(data)
 			assert not encoded == io.BytesIO()
-			output_cerializer = io.BytesIO()
 			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
-			cerializer_instance.serialize(namespace, schema_name, data, output_cerializer)
-			assert encoded == prefix(schema_version) + output_cerializer.getvalue()
+			output_cerializer = cerializer_codec.serialize(data)
+			assert encoded == prefix(schema_version) + output_cerializer
 	except FileNotFoundError:
 		logging.warning(
 			'Missing schema or Example file for schema == %s and version == %s',
@@ -153,15 +141,14 @@ def test_codec_compatibility_serialize(
 	'schema_root, namespace, schema_name, schema_version',
 	cerializer.quantlane_utils.iterate_over_schemata(SCHEMA_ROOTS),
 )
-def test_codec_compatibility_deserialize(
-	schema_root,
-	namespace,
-	schema_name,
-	schema_version,
-	cerializer_instance,
-):
+def test_codec_compatibility_deserialize(schema_root, namespace, schema_name, schema_version, schemata):
 	# patch for not working avro codec
 	init_fastavro(SCHEMA_ROOTS)
+	cerializer_codec = cerializer.cerializer_handler.Cerializer(
+		schemata,
+		namespace,
+		f'{schema_name}:{schema_version}',
+	)
 	try:
 		path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 		data_all = yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml')))
@@ -172,11 +159,7 @@ def test_codec_compatibility_deserialize(
 			decoded = codec.decode(encoded)
 			encoded = encoded[len(prefix(schema_version)) :]
 			schema_name = f'{schema_name}:{schema_version}' if ':' not in schema_name else schema_name
-			decoded_cerializer = cerializer_instance.deserialize(
-				namespace,
-				schema_name,
-				encoded,
-			)
+			decoded_cerializer = cerializer_codec.deserialize(encoded)
 			assert decoded == decoded_cerializer
 	except FileNotFoundError:
 		logging.warning(

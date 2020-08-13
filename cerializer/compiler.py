@@ -1,6 +1,5 @@
 # pylint: disable=protected-access
 from typing import Any, List
-import distutils.core
 import hashlib
 import importlib.machinery
 import os.path
@@ -10,6 +9,7 @@ import Cython.Build.Dependencies
 import Cython.Build.Inline
 import Cython.Compiler.Main
 import Cython.Utils
+import distutils.core
 
 
 def compile_code(code: str) -> Any:
@@ -18,7 +18,7 @@ def compile_code(code: str) -> Any:
 
 def _load_dynamic(name: str, module_path: str) -> Any:
 	# mypy does not understand ExtensionFileLoader init
-	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module() # type: ignore
+	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module()  # type: ignore
 
 
 def _cython_inline(
@@ -39,28 +39,10 @@ def _cython_inline(
 		os.makedirs(lib_dir)
 	cflags: List[str] = []
 	c_include_dirs: List[str] = []
-	module_code = '''
-#cython: language_level=3
-cimport write
-cimport read
-cimport prepare
-import cython
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.initializedcheck(False)
-def __invoke():
-%(func_body)s
-    return locals()
-	''' % {
-		'func_body': '\n'.join(
-			code
-		),
-	}
 	pyx_file = os.path.join(lib_dir, module_name + '.pyx')
 	fh = open(pyx_file, 'w')
 	try:
-		fh.write(module_code)
+		fh.write(complete_code)
 	finally:
 		fh.close()
 	extension = distutils.core.Extension(

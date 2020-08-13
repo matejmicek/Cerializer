@@ -16,6 +16,8 @@ BASIC_TYPES = {BOOLEAN, INT, LONG, FLOAT, DOUBLE, BYTES, STRING}
 
 COMPLEX_TYPES = {RECORD, ENUM, ARRAY, MAP, FIXED}
 
+PROJECT_ROOT = '/home/development/work/Cerializer'
+
 
 class SerializationMode:
 	MODE_SERIALIZE = 'serialize'
