@@ -9,6 +9,7 @@ import schemachinery.codec.avro_schemata
 import yaml
 import logging
 import cerializer.cerializer_handler
+import cerializer.schema_handler
 import cerializer.compiler
 import cerializer.quantlane_utils
 import cerializer.utils
@@ -17,8 +18,9 @@ import cerializer.utils
 MAGIC_BYTE = b'\x00'
 
 # developer specific path. Serves only as an example.
-SCHEMA_ROOT1 = '/home/development/root_schemata'
+SCHEMA_ROOT1 = '/home/development/schemata'
 SCHEMA_ROOT2 = '/home/development/work/Cerializer/cerializer/tests/schemata'
+SCHEMA_ROOT_COMMON = '/home/development/work/schemachinery/schemachinery/schemata'
 
 
 SCHEMA_ROOTS = [SCHEMA_ROOT2]
@@ -26,7 +28,9 @@ SCHEMA_ROOTS = [SCHEMA_ROOT2]
 
 @pytest.fixture(scope = 'module')
 def schemata():
-	return cerializer.quantlane_utils.schema_roots_to_schemata(SCHEMA_ROOTS)
+	return cerializer.schema_handler.CerializerSchemata(
+		cerializer.quantlane_utils.schema_roots_to_schemata(SCHEMA_ROOTS)
+	)
 
 
 def prefix(version):
@@ -48,7 +52,7 @@ def test_fastavro_compatibility_serialize(schema_root, namespace, schema_name, s
 	init_fastavro(SCHEMA_ROOTS)
 	path = os.path.join(schema_root, namespace, schema_name, str(schema_version))
 	cerializer_codec = cerializer.cerializer_handler.Cerializer(
-		schemata = schemata,
+		cerializer_schemata = schemata,
 		namespace = namespace,
 		schema_name = f'{schema_name}:{schema_version}',
 	)
@@ -168,3 +172,7 @@ def test_codec_compatibility_deserialize(schema_root, namespace, schema_name, sc
 			schema_version,
 		)
 		assert False
+
+
+
+

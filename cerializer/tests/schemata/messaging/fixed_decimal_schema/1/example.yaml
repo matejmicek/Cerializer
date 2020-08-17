@@ -1,0 +1,3 @@
+date0: !!python/object/apply:decimal.Decimal ['0.33']
+date1: !!python/object/apply:decimal.Decimal ['0.33']
+date2: !!python/object/apply:decimal.Decimal ['0.33']

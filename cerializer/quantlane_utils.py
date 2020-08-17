@@ -1,16 +1,16 @@
 # from distutils.sysconfig import get_config_var
-import importlib.machinery
-import os
-import io
-import struct
+import contextlib
 from typing import Any, Dict, Hashable, Iterator, List, Tuple, Union
 
-import schemachinery.codec.avro_codec
-import schemachinery.codec.avro_schemata
-import yaml
-import constants.constants
-import cerializer.schema_handler
+import importlib.machinery
+import os
 
+import yaml
+
+import cerializer.quantlane_cerializer
+import cerializer.schema_handler
+import constants.constants
+import logging
 
 MAGIC_BYTE = b'\x00'
 
@@ -28,15 +28,20 @@ def schema_roots_to_schemata(
 
 
 def iterate_over_schemata(schema_roots: List[str]) -> Iterator[Tuple[str, str, str, int]]:
+	# in case there are tests or other non complient files in the schema folder
 	for schema_root in schema_roots:
-		for namespace in [f for f in os.listdir(schema_root) if not f.startswith('.')]:
-			for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith('.')]:
-				for version in [
-					f
-					for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
-					if not f.startswith('.')
-				]:
-					yield schema_root, namespace, schema_name, int(version)
+		with contextlib.suppress(NotADirectoryError):
+			for namespace in [f for f in os.listdir(schema_root) if not f.startswith('.')]:
+				with contextlib.suppress(NotADirectoryError):
+					for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith('.')]:
+						with contextlib.suppress(NotADirectoryError):
+							for version in [
+								f
+								for f in os.listdir(os.path.join(schema_root, namespace, schema_name))
+								if not f.startswith('.')
+							]:
+								if os.path.isdir(os.path.join(schema_root, namespace, schema_name, version)) and version.isdigit():
+									yield schema_root, namespace, schema_name, int(version)
 
 
 def iterate_over_schema_roots(schema_roots: List[str]) -> Iterator[Tuple[str, str]]:
@@ -49,10 +54,11 @@ def get_quantlane_schema_identifier(namespace: str, schema_name: str, schema_ver
 	return f'{namespace}.{schema_name}:{schema_version}'
 
 
-def add_compiled_cerializer_code(schema_roots: List[str]) -> None:
+def add_compiled_cerializer_code(compiled_schema_roots: List[str], helper_schema_roots: List[str] = None) -> None:
+	helper_schema_roots = helper_schema_roots if helper_schema_roots else []
 	schemata: List[Tuple[str, Dict[str, Any]]] = []
-
-	for schema_root, namespace, schema_name, version in iterate_over_schemata(schema_roots):
+	all_roots = compiled_schema_roots + helper_schema_roots
+	for schema_root, namespace, schema_name, version in iterate_over_schemata(all_roots):
 		schema_path = os.path.join(schema_root, namespace, schema_name, str(version), 'schema.yaml')
 		schema_tuple = (
 			get_quantlane_schema_identifier(namespace, schema_name, version),
@@ -60,9 +66,13 @@ def add_compiled_cerializer_code(schema_roots: List[str]) -> None:
 		)
 		schemata.append(schema_tuple)
 
-	code_generator = cerializer.schema_handler.CodeGenerator(schemata = schemata)
+	cerializer_schemata = cerializer.schema_handler.CerializerSchemata(schemata)
 
-	for schema_root, namespace, schema_name, version in iterate_over_schemata(schema_roots):
+	for schema_root, namespace, schema_name, version in iterate_over_schemata(compiled_schema_roots):
+		code_generator = cerializer.schema_handler.CodeGenerator(
+			schemata = cerializer_schemata,
+			schema_identifier = get_quantlane_schema_identifier(namespace, schema_name, version),
+		)
 		folder_path = os.path.join(schema_root, namespace, schema_name, str(version))
 		schema_path = os.path.join(folder_path, 'schema.yaml')
 		file_path = os.path.join(folder_path, f'{schema_name}_{version}.pyx')
@@ -74,53 +84,25 @@ def add_compiled_cerializer_code(schema_roots: List[str]) -> None:
 		os.system(f'python {os.path.join(constants.constants.PROJECT_ROOT, "build.py")} build_ext --inplace')
 
 
-def get_module(schema_root: str, namespace: str, name: str, version: int) -> Any:
-	folder_path = os.path.join(schema_root, namespace, name, str(version))
-	so_files = [file_name for file_name in os.listdir(folder_path) if file_name.endswith('.so')]
+def get_module(schema_roots: List[str], namespace: str, name: str, version: int) -> Any:
+	so_files: List[str] = []
+	for schema_root in schema_roots:
+		with contextlib.suppress(FileNotFoundError):
+			folder_path = os.path.join(schema_root, namespace, name, str(version))
+			so_files += [
+				os.path.join(folder_path, file_name)
+				for file_name in os.listdir(folder_path)
+				if file_name.endswith('.so')
+			]
+
 	if len(so_files) != 1:
-		return None
-	x = importlib.machinery.ExtensionFileLoader(
-		f'{name}_{version}',
-		os.path.join(schema_root, namespace, name, str(version), so_files[0]),
-	).load_module()
-	return x.__invoke()
-
-
-def _get_namespace_to_schema_root_mapping(schema_roots: List[str]) -> Dict[str, str]:
-	mapping: Dict[str, str] = {}
-	for schema_root, namespace, _, _ in iterate_over_schemata(schema_roots):
-		mapping[namespace] = schema_root
-	return mapping
-
-
-class CerializerQuantaneCodec:
-	def __init__(self, schema_roots: List[str], namespace: str, schema_name: str, schema_version: int) -> None:
-		self.schema_version = schema_version
-		self.namespace_to_schema_root_mapping = _get_namespace_to_schema_root_mapping(schema_roots)
-		schema_root = self.namespace_to_schema_root_mapping[namespace]
-		module = get_module(schema_root, namespace, schema_name, schema_version)
-		if module:
-			self.serialization_function = module['serialize']
-			self.deserialization_function = module['deserialize']
-		else:
-			# this occurs when we did not find a corresponding compiled cerializer module
-			avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*schema_roots)
-			avro_codec = schemachinery.codec.avro_codec.AvroCodec(
-				avro_schemata = avro_schemata,
-				namespace = namespace,
-				schema_name = schema_name,
-				expected_version = schema_version,
+		if not so_files:
+			raise cerializer.quantlane_cerializer.MissingCerializerCode(
+				f'Missing Cerializer code for schema = {name} and version = {version}'
 			)
-			self.encode = avro_codec.encode
-			self.decode = avro_codec.decode
-
-	def encode(self, data: Any) -> bytes:
-		output = io.BytesIO()
-		self.serialization_function(data, output)
-		return MAGIC_BYTE + struct.pack('>I', self.schema_version) + output.getvalue()
-
-	def decode(self, data: bytes) -> Any:
-		# we assume correct version of schema
-		# removing magic byte and version prefix
-		data_io = io.BytesIO(data[5:])
-		return self.deserialization_function(data_io)
+		else:
+			raise cerializer.quantlane_cerializer.MissingCerializerCode(
+				f'More than one .so file for schema = {name} and version = {version}'
+			)
+	x = importlib.machinery.ExtensionFileLoader(f'{name}_{version}', so_files[0],).load_module()
+	return x.__invoke()

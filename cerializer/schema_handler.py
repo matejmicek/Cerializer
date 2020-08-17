@@ -1,24 +1,101 @@
 # pylint: disable=protected-access
-import os
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+import copy
+import os
 
 import jinja2
 
-import cerializer.cerializer_handler
 import cerializer.utils
 import constants.constants
 
 
+class CerializerSchemata:
+	'''
+	Storage class for schemata.
+	'''
+
+	def __init__(self, schemata: List[Tuple[str, Any]]):
+		self._schema_database = cerializer.utils.get_subschemata(schemata)
+		self._cycle_starting_nodes: Set[str] = set()
+		self._init_cycles()
+
+	def __contains__(self, item: str) -> bool:
+		return item in self._schema_database
+
+	def load_schema(
+		self,
+		schema_identifier: str,
+		context_schema_identifier: Optional[str] = None,
+	) -> Union[str, List, Dict[str, Any]]:
+		# we first check whether the schema we are looking for is not defined in the same big schema
+		# this would mean the schema is redefined and that the local version has to be used
+		if context_schema_identifier:
+			context_schema = self._schema_database[context_schema_identifier]
+			local_schema_database = cerializer.utils.get_subschemata([(context_schema_identifier, context_schema)])
+			if schema_identifier in local_schema_database:
+				return local_schema_database[schema_identifier]
+		if schema_identifier in self._schema_database:
+			return self._schema_database[schema_identifier]
+		else:
+			raise RuntimeError(f'Schema with identifier = {schema_identifier} not found in schema database.')
+
+	def is_cycle_starting(self, schema_identifier: str) -> bool:
+		return schema_identifier in self._cycle_starting_nodes
+
+	def _init_cycles(self) -> None:
+		for _, schema in self._schema_database.items():
+			visited: Set[str] = set()
+			self._cycle_detection(schema, visited, self._cycle_starting_nodes)
+
+	def _cycle_detection(
+		self,
+		parsed_schema: Union[str, List, Dict[str, Any]],
+		visited: Set[str],
+		cycle_starting_nodes: Set[str],
+	) -> None:
+		'''
+		Detects cycles in schemata.
+		This can happen when for example a schema is defined using itself eg. a tree schema.
+		This method add all cycle starting nodes in all schemata_database to cycle_starting_nodes set.
+		'''
+		if isinstance(parsed_schema, str) and parsed_schema in visited:
+			cycle_starting_nodes.add(parsed_schema)
+		elif isinstance(parsed_schema, dict):
+			name = parsed_schema.get('name')
+			type_ = parsed_schema['type']
+			if type(type_) is str and type_ in visited:
+				cycle_starting_nodes.add(type_)
+			elif name:
+				visited.add(name)
+				new_visited = copy.deepcopy(visited)
+				if 'fields' in parsed_schema:
+					for field in parsed_schema['fields']:
+						self._cycle_detection(field, new_visited, cycle_starting_nodes)
+				if type(type_) is dict:
+					self._cycle_detection(type_, new_visited, cycle_starting_nodes)
+				if type(type_) is list:
+					for element in type_:
+						self._cycle_detection(element, new_visited, cycle_starting_nodes)
+				elif type(type_) is str and type_ in self:
+					self._cycle_detection(self.load_schema(type_), new_visited, cycle_starting_nodes)
+
+
 class CodeGenerator:
-	def __init__(self, schemata: List[Tuple[str, Dict[str, Any]]]) -> None:
+	'''
+	Driver class for code generation.
+	'''
+
+	def __init__(self, schemata: CerializerSchemata, schema_identifier: str) -> None:
+		self.context_schema = schema_identifier
 		self.buffer_name = 'buffer'
 		self.cdefs: List[str] = []
+		self.schemata = schemata
 		self.dict_name_generator = cerializer.utils.name_generator('d_dict')
 		self.val_name_generator = cerializer.utils.name_generator('val')
 		self.key_name_generator = cerializer.utils.name_generator('key')
 		self.type_name_generator = cerializer.utils.name_generator('type')
 		self.int_name_generator = cerializer.utils.name_generator('i')
-		self.schema_database = cerializer.utils.get_subschemata(schemata)
 		self.jinja_env = jinja2.Environment(
 			loader = jinja2.FileSystemLoader(
 				searchpath = os.path.join(constants.constants.PROJECT_ROOT, 'cerializer', 'templates')
@@ -26,8 +103,7 @@ class CodeGenerator:
 		)
 		self.jinja_env.globals['env'] = self.jinja_env
 		self.necessary_defs: Set[str] = set()
-		self.cycle_starting_nodes: Dict[str, str] = {}
-		self.init_cycles()
+		self.handled_cycles: Set[str] = set()
 
 	def prepare(
 		self,
@@ -66,8 +142,13 @@ class CodeGenerator:
 		'''
 		if type_ == 'null':
 			return f'write.write_null({self.buffer_name})'
-		if type_ in self.schema_database and type_ not in constants.constants.BASIC_TYPES:
-			return self.generate_serialization_code(self.schema_database[type_], location)
+		if type_ in self.schemata and type_ not in constants.constants.BASIC_TYPES:
+			schema = self.load_with_context(type_)
+			old_context = self.context_schema
+			self.context_schema = type_
+			code = self.generate_serialization_code(schema, location)
+			self.context_schema = old_context
+			return code
 		return f'write.write_{type_}({self.buffer_name}, {location})'
 
 	def get_deserialization_function(
@@ -81,8 +162,13 @@ class CodeGenerator:
 		'''
 		if type_ == 'null':
 			return f'{location} = None'
-		if type_ in self.schema_database and type_ not in constants.constants.BASIC_TYPES:
-			return self.generate_deserialization_code(self.schema_database[type_], location)
+		if type_ in self.schemata and type_ not in constants.constants.BASIC_TYPES:
+			loaded_schema = self.load_with_context(type_)
+			old_context = self.context_schema
+			self.context_schema = type_
+			code = self.generate_deserialization_code(loaded_schema, location)
+			self.context_schema = old_context
+			return code
 		read_params = f'fo, {schema}' if type_ == 'fixed' else 'fo'
 		return f'{location} = read.read_{type_}({read_params})'
 
@@ -271,25 +357,13 @@ class CodeGenerator:
 			index_name = index_name,
 		)
 
-	def init_cycles(self) -> None:
-		cycle_starting_nodes: Set[str] = set()
-		for _, schema in self.schema_database.items():
-			visited: Set[str] = set()
-			cerializer.utils.cycle_detection(schema, visited, cycle_starting_nodes, self.schema_database)
-			for starting_node in cycle_starting_nodes:
-				# we need to first put in something for each cycle starting node so that
-				# the 'render code' function does not end up in an infinite cycle
-				self.cycle_starting_nodes[starting_node] = ''
-			for starting_node in cycle_starting_nodes:
-				self.cycle_starting_nodes[starting_node] = self.render_code(self.schema_database[starting_node])
-
 	def render_code_with_wraparounds(self, schema: Dict[str, Any]) -> str:
 		code = self.render_code(schema = schema)
 		meta_template = self.jinja_env.get_template('meta_template.jinja2')
 		rendered_code = meta_template.render(code = code)
 		return rendered_code
 
-	def render_code(self, schema: Dict[str, Any]) -> str:
+	def render_code(self, schema: Union[str, List, Dict[str, Any]]) -> str:
 		'''
 		Renders code for a given schema into a .pyx file.
 		'''
@@ -300,9 +374,6 @@ class CodeGenerator:
 		self.jinja_env.globals['get_type_name'] = cerializer.utils.get_type_name
 		schema = cerializer.utils.parse_schema(schema)
 		location = 'data'
-		# This is here because if schema name XYZ is defined in this file and also
-		# somewhere else in the schema repo, the definition from this file has to be considered first
-		cerializer.utils.scan_schema_for_subschemata(schema, self.schema_database)
 		serialization_code = self.generate_serialization_code(schema = schema, location = location)
 		serialization_code = '\n'.join(self.cdefs) + '\n' + serialization_code
 		self.cdefs = []
@@ -326,7 +397,7 @@ class CodeGenerator:
 		Driver function to handle code generation for a schema.
 		'''
 		if isinstance(schema, str):
-			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
+			if self.schemata.is_cycle_starting(schema) and schema not in constants.constants.BASIC_TYPES:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_SERIALIZE, schema, location)
 			return self.get_serialization_function(schema, location)
 		if isinstance(schema, list):
@@ -364,20 +435,28 @@ class CodeGenerator:
 				location = f"{location}['{name}']"
 			default_if_necessary = cerializer.utils.default_if_necessary(location, schema.get('default'))
 			return str(default_if_necessary + '\n' + self.get_serialization_function(type_, location))
-		elif type(type_) is str and type_ in self.schema_database:
-			if type_ in self.cycle_starting_nodes:
+		elif type(type_) is str and type_ in self.schemata:
+			loaded_schema = self.load_with_context(type_)
+			old_context = self.context_schema
+			self.context_schema = type_
+			if self.schemata.is_cycle_starting(type_):
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_SERIALIZE, type_, location)
 			name = schema['name']
 			new_location = f"{location}['{name}']"
-			return self.generate_serialization_code(self.schema_database[type_], new_location)
+			code = self.generate_serialization_code(loaded_schema, new_location)
+			self.context_schema = old_context
+			return code
 		raise NotImplementedError(f'Cant handle schema = {schema}')
+
+	def load_with_context(self, schema_identifier: str) -> Union[str, List, Dict[str, Any]]:
+		return self.schemata.load_schema(schema_identifier, self.context_schema)
 
 	def generate_deserialization_code(self, schema: Union[Dict[str, Any], list, str], location: str) -> str:
 		'''
 		Driver function to handle code generation for a schema.
 		'''
 		if isinstance(schema, str):
-			if schema in self.cycle_starting_nodes and schema not in constants.constants.BASIC_TYPES:
+			if self.schemata.is_cycle_starting(schema) and schema not in constants.constants.BASIC_TYPES:
 				return self.handle_cycle(constants.constants.SerializationMode.MODE_DESERIALIZE, schema, location)
 			return self.get_deserialization_function(schema, location)
 		if isinstance(schema, list):
@@ -418,12 +497,17 @@ class CodeGenerator:
 				if name:
 					location = f"{location}['{name}']"
 				return self.get_deserialization_function(type_, location, schema = schema)
-			elif type(type_) is str and type_ in self.schema_database:
-				if type_ in self.cycle_starting_nodes:
+			elif type(type_) is str and type_ in self.schemata:
+				loaded_schema = self.load_with_context(type_)
+				old_context = self.context_schema
+				self.context_schema = type_
+				if self.schemata.is_cycle_starting(type_):
 					return self.handle_cycle(constants.constants.SerializationMode.MODE_DESERIALIZE, type_, location)
 				name = schema['name']
 				new_location = f"{location}['{name}']"
-				return self.generate_deserialization_code(self.schema_database[type_], new_location)
+				code = self.generate_deserialization_code(loaded_schema, new_location)
+				self.context_schema = old_context
+				return code
 		raise NotImplementedError(f'Cant handle schema = {schema}')
 
 	def handle_cycle(self, mode: constants.constants.SerializationMode, schema: str, location: str) -> str:
@@ -432,25 +516,27 @@ class CodeGenerator:
 			f'{constants.constants.SerializationMode.MODE_SERIALIZE}_{normalised_type}(data, output)'
 		)
 		deserialization_function = f'{constants.constants.SerializationMode.MODE_DESERIALIZE}_{normalised_type}(fo)'
-		self.necessary_defs.add(
-			self.cycle_starting_nodes[schema]
-			.replace(
-				f'cpdef {constants.constants.SerializationMode.MODE_SERIALIZE}(data, output)',
-				f'def {serialization_function}',
+		if schema not in self.handled_cycles:
+			self.handled_cycles.add(schema)
+			code = self.render_code(self.load_with_context(schema))
+			self.necessary_defs.add(
+				code.replace(
+					f'cpdef {constants.constants.SerializationMode.MODE_SERIALIZE}(data, output)',
+					f'def {serialization_function}',
+				)
+				.replace(
+					f'def {constants.constants.SerializationMode.MODE_SERIALIZE}(data, output)',
+					f'def {serialization_function}',
+				)
+				.replace(
+					f'cpdef {constants.constants.SerializationMode.MODE_DESERIALIZE}(fo)',
+					f'def {deserialization_function}',
+				)
+				.replace(
+					f'def {constants.constants.SerializationMode.MODE_DESERIALIZE}(fo)',
+					f'def {deserialization_function}',
+				)
 			)
-			.replace(
-				f'def {constants.constants.SerializationMode.MODE_SERIALIZE}(data, output)',
-				f'def {serialization_function}',
-			)
-			.replace(
-				f'cpdef {constants.constants.SerializationMode.MODE_DESERIALIZE}(fo)',
-				f'def {deserialization_function}',
-			)
-			.replace(
-				f'def {constants.constants.SerializationMode.MODE_DESERIALIZE}(fo)',
-				f'def {deserialization_function}',
-			)
-		)
 		serialization_function_call = serialization_function.replace('(data,', f'({location},')
 		if mode is constants.constants.SerializationMode.MODE_SERIALIZE:
 			return f'output.write(buffer)\nbuffer = bytearray()\n{serialization_function_call}'
@@ -463,7 +549,7 @@ class CodeGenerator:
 
 	def correct_constraint(
 		self,
-		type_: Union[Dict, str],
+		type_: Union[Dict[str, Any], str, List],
 		location: str,
 		key: str,
 		first: bool,
@@ -501,8 +587,8 @@ class CodeGenerator:
 		elif isinstance(type_, dict) and type_.get('logicalType') is not None:
 			constraint = cerializer.utils.get_logical_type_constraint(type_, full_location)
 
-		elif isinstance(type_, str) and type_ in self.schema_database:
-			return self.correct_constraint(self.schema_database[type_], location, key, first, value)
+		elif isinstance(type_, str) and type_ in self.schemata:
+			return self.correct_constraint(self.load_with_context(type_), location, key, first, value)
 
 		elif isinstance(type_, dict) and type_['type'] == 'record':
 			# TODO adjust for different dict types
@@ -511,7 +597,3 @@ class CodeGenerator:
 		if constraint:
 			return f'{"if" if first else "elif"} {constraint}:'
 		raise RuntimeError(f'invalid constraint for type == {type_}')
-
-	def acknowledge_new_schemata(self, schemata: List[Tuple[str, Dict[str, Any]]]) -> None:
-		new_subschemata = cerializer.utils.get_subschemata(schemata)
-		self.schema_database = {**self.schema_database, **new_subschemata}

@@ -13,7 +13,7 @@ import logwood
 
 
 # developer specific path. Serves only as an example.
-SCHEMA_ROOT1 = '/home/development/root_schemata'
+SCHEMA_ROOT1 = '/home/development/schemata'
 SCHEMA_ROOT2 = '/home/development/work/Cerializer/cerializer/tests/schemata'
 
 SCHEMA_ROOTS = [SCHEMA_ROOT2]
@@ -62,7 +62,9 @@ except:
 
 avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*{schema_roots})
 codec = schemachinery.codec.avro_codec.AvroCodec(avro_schemata, '{namespace}', '{schema_name}', {schema_version})
-schemata = cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
+
+s =  cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
+schemata = cerializer.schema_handler.CerializerSchemata(s)
 cerializer_codec = cerializer.cerializer_handler.Cerializer(schemata, '{namespace}', '{schema_name}:{schema_version}')
 	'''
 
@@ -125,7 +127,8 @@ output = io.BytesIO()
 avro_schemata = schemachinery.codec.avro_schemata.AvroSchemata(*{schema_roots})
 codec = schemachinery.codec.avro_codec.AvroCodec(avro_schemata, '{namespace}', '{schema_name}', {schema_version})
 
-schemata = cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
+s =  cerializer.quantlane_utils.schema_roots_to_schemata({schema_roots})
+schemata = cerializer.schema_handler.CerializerSchemata(s)
 cerializer_codec = cerializer.cerializer_handler.Cerializer(schemata, '{namespace}', '{schema_name}:{schema_version}')
 	'''
 

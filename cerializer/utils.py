@@ -1,7 +1,8 @@
 # pylint: disable=protected-access
+from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union, Optional
+
 import copy
 import itertools
-from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union, Optional
 
 import fastavro
 
@@ -46,14 +47,11 @@ def parse_schema(schema: Union[Dict[Hashable, Any], list, None]) -> Any:
 			return parsed
 		except fastavro.schema.UnknownType as e:
 			# we ignore missing schema errors since we are going to fill them in later
-			try:
-				fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
-			except AttributeError:
-				fastavro._schema_common.SCHEMA_DEFS = {}
+			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
 
 
-def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Any]:
-	schema_database: Dict[str, Any] = {}
+def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Union[str, List, Dict[str, Any]]]:
+	schema_database: Dict[str, Union[str, List, Dict[str, Any]]] = {}
 	for schema_identifier, schema in schemata:
 		parsed_schema = parse_schema(schema)
 		if '.' in schema_identifier:
