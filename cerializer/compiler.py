@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, deprecated-method, no-value-for-parameter
 from typing import Any, List
 import hashlib
 import importlib.machinery

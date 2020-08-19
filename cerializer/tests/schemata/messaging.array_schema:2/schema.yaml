@@ -12,4 +12,4 @@ fields:
 - name: trades
   type:
     type: array
-    items: Profit:1
+    items: string

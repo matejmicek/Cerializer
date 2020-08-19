@@ -1,4 +1,4 @@
-name: reference_schema:1
+name: tree_schema:1
 doc: ahoj
 namespace: messaging
 type: record

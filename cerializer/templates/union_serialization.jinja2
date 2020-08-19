@@ -5,10 +5,9 @@ if type({% if value %}{{ value }}{% else %}{{ location + ".get('" + name + "')"}
         {{ number_code }}
         {{ generate_serialization_code(type_, data_name) | indent(8) }}
     {% endfor %}
-
 else:
-{%  for type_, number_code, serialization_code in types %}
+{%-  for type_, number_code, serialization_code in types %}
     {{ correct_constraint(type_, location, name, loop.first, value) }}
         {{ number_code }}
         {{ serialization_code | indent(8)}}
-{% endfor %}
+{%- endfor %}

@@ -4,6 +4,16 @@ cimport read
 cimport prepare
 import cython
 
+{%  if quantlane %}
+class DictWrapper(dict):
+    '''
+    This is used only in read_union to be able
+    to add `schema` attribute to a dict.
+    '''
+{% endif %}
+
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)

@@ -11,13 +11,8 @@ import decimal
 
 import qutils.time.nanotime
 
-
-
-import qutils.time.nanotime
 import datetime
-import pytz
 import uuid
-from decimal import Context
 
 
 
@@ -252,18 +247,12 @@ cdef inline prepare_time_micros(object data):
 
 
 cdef prepare_nano_time(data):
-	if isinstance(data, qutils.time.nanotime.NanoTime):
-		return data.nanoseconds
-	else:
-		return data
+	return data.nanoseconds
 
 
 
 cdef prepare_nano_time_delta(data):
-	if isinstance(data, qutils.time.NanoTimeDelta):
-		return data.nanoseconds
-	else:
-		return data
+	return data.nanoseconds
 
 
 
@@ -283,7 +272,7 @@ cdef inline read_decimal(data, schema):
 	scale = schema.get('scale', 0)
 	precision = schema['precision']
 	unscaled_datum = int.from_bytes(data, byteorder = 'big', signed = True)
-	decimal_context = Context()
+	decimal_context = decimal.Context()
 	decimal_context.prec = precision
 	return decimal_context.create_decimal(unscaled_datum). \
 		scaleb(-scale, decimal_context)
@@ -303,7 +292,7 @@ cdef inline read_time_micros(data):
 	return datetime.time(h, m, s, mcs)
 
 cdef inline parse_timestamp(data, resolution):
-	return datetime.datetime(1970, 1, 1, tzinfo = pytz.utc) + datetime.timedelta(seconds = data / resolution)
+	return datetime.datetime(1970, 1, 1, tzinfo = utc) + datetime.timedelta(seconds = data / resolution)
 
 cdef read_nano_time(data):
 	return qutils.time.nanotime.NanoTime(data)

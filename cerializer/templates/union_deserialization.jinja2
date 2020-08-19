@@ -1,6 +1,14 @@
 {{ index_name }} = read.read_int(fo)
-{%  for type_ in types %}
+{%-  for type_ in types %}
 if {{ index_name }} == {{ loop.index0 }}:
     {{ generate_deserialization_code(type_, location) | indent(4)}}
-
-{% endfor %}
+    {%- if quantlane %}
+    if isinstance({{ location }}, dict):
+        {{ location }} = DictWrapper({{ location }})
+        {% if type_ is string %}
+        {{ location }}.schema = '{{ type_ }}'
+        {% elif 'name' in type_ %}
+        {{ location }}.schema = {{ type_ }}['name']
+        {% endif %}
+    {%- endif %}
+{%- endfor %}

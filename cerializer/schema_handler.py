@@ -16,7 +16,9 @@ class CerializerSchemata:
 	'''
 
 	def __init__(self, schemata: List[Tuple[str, Any]]):
-		self._schema_database = cerializer.utils.get_subschemata(schemata)
+		self._schema_database: Dict[str, Union[str, List[Any], Dict[str, Any]]] = cerializer.utils.get_subschemata(
+			schemata
+		)
 		self._cycle_starting_nodes: Set[str] = set()
 		self._init_cycles()
 
@@ -32,7 +34,10 @@ class CerializerSchemata:
 		# this would mean the schema is redefined and that the local version has to be used
 		if context_schema_identifier:
 			context_schema = self._schema_database[context_schema_identifier]
-			local_schema_database = cerializer.utils.get_subschemata([(context_schema_identifier, context_schema)])
+			# mypy needs this type annotation
+			local_schema_database: Dict[str, Union[str, List[Any], Dict[str, Any]]] = cerializer.utils.get_subschemata(
+				[(context_schema_identifier, context_schema)]
+			)
 			if schema_identifier in local_schema_database:
 				return local_schema_database[schema_identifier]
 		if schema_identifier in self._schema_database:
@@ -86,7 +91,7 @@ class CodeGenerator:
 	Driver class for code generation.
 	'''
 
-	def __init__(self, schemata: CerializerSchemata, schema_identifier: str) -> None:
+	def __init__(self, schemata: CerializerSchemata, schema_identifier: str, quantlane: bool = False) -> None:
 		self.context_schema = schema_identifier
 		self.buffer_name = 'buffer'
 		self.cdefs: List[str] = []
@@ -99,9 +104,11 @@ class CodeGenerator:
 		self.jinja_env = jinja2.Environment(
 			loader = jinja2.FileSystemLoader(
 				searchpath = os.path.join(constants.constants.PROJECT_ROOT, 'cerializer', 'templates')
-			)
+			),
 		)
 		self.jinja_env.globals['env'] = self.jinja_env
+		# this is a bool flag for turning on the DictWrapper feature
+		self.jinja_env.globals['quantlane'] = quantlane
 		self.necessary_defs: Set[str] = set()
 		self.handled_cycles: Set[str] = set()
 
@@ -315,7 +322,7 @@ class CodeGenerator:
 		else:
 			raise NotImplementedError(f'Cant handle schema = {schema}')
 		template = self.jinja_env.get_template('union_deserialization.jinja2')
-		return template.render(index_name = index_name, types = types, location = new_location)
+		return template.render(index_name = index_name, types = types, location = new_location,)
 
 	def get_map_serialization(self, schema: Dict[str, Any], location: str) -> str:
 		'''
@@ -357,10 +364,10 @@ class CodeGenerator:
 			index_name = index_name,
 		)
 
-	def render_code_with_wraparounds(self, schema: Dict[str, Any]) -> str:
+	def render_code_with_wraparounds(self, schema: Union[str, List[Any], Dict[str, Any]]) -> str:
 		code = self.render_code(schema = schema)
 		meta_template = self.jinja_env.get_template('meta_template.jinja2')
-		rendered_code = meta_template.render(code = code)
+		rendered_code = meta_template.render(code = code,)
 		return rendered_code
 
 	def render_code(self, schema: Union[str, List, Dict[str, Any]]) -> str:
@@ -426,7 +433,8 @@ class CodeGenerator:
 			name = schema['name']
 			new_location = f"{location}['{name}']"
 			default_if_necessary = cerializer.utils.default_if_necessary(new_location, schema.get('default'))
-			return str(default_if_necessary + '\n' + self.generate_serialization_code(type_, new_location))
+			default_if_necessary = (default_if_necessary + '\n') if default_if_necessary else ''
+			return str(default_if_necessary + self.generate_serialization_code(type_, new_location))
 		elif type(type_) is list:
 			return self.get_union_serialization(schema, location)
 		elif type(type_) is str and type_ in constants.constants.BASIC_TYPES:
@@ -434,7 +442,8 @@ class CodeGenerator:
 			if name:
 				location = f"{location}['{name}']"
 			default_if_necessary = cerializer.utils.default_if_necessary(location, schema.get('default'))
-			return str(default_if_necessary + '\n' + self.get_serialization_function(type_, location))
+			default_if_necessary = (default_if_necessary + '\n') if default_if_necessary else ''
+			return str(default_if_necessary + self.get_serialization_function(type_, location))
 		elif type(type_) is str and type_ in self.schemata:
 			loaded_schema = self.load_with_context(type_)
 			old_context = self.context_schema
@@ -513,27 +522,29 @@ class CodeGenerator:
 	def handle_cycle(self, mode: constants.constants.SerializationMode, schema: str, location: str) -> str:
 		normalised_type = schema.replace(':', '_').replace('.', '_')
 		serialization_function = (
-			f'{constants.constants.SerializationMode.MODE_SERIALIZE}_{normalised_type}(data, output)'
+			f'{constants.constants.SerializationMode.MODE_SERIALIZE.value}_{normalised_type}(data, output)'
 		)
-		deserialization_function = f'{constants.constants.SerializationMode.MODE_DESERIALIZE}_{normalised_type}(fo)'
+		deserialization_function = (
+			f'{constants.constants.SerializationMode.MODE_DESERIALIZE.value}_{normalised_type}(fo)'
+		)
 		if schema not in self.handled_cycles:
 			self.handled_cycles.add(schema)
 			code = self.render_code(self.load_with_context(schema))
 			self.necessary_defs.add(
 				code.replace(
-					f'cpdef {constants.constants.SerializationMode.MODE_SERIALIZE}(data, output)',
+					f'cpdef {constants.constants.SerializationMode.MODE_SERIALIZE.value}(data, output)',
 					f'def {serialization_function}',
 				)
 				.replace(
-					f'def {constants.constants.SerializationMode.MODE_SERIALIZE}(data, output)',
+					f'def {constants.constants.SerializationMode.MODE_SERIALIZE.value}(data, output)',
 					f'def {serialization_function}',
 				)
 				.replace(
-					f'cpdef {constants.constants.SerializationMode.MODE_DESERIALIZE}(fo)',
+					f'cpdef {constants.constants.SerializationMode.MODE_DESERIALIZE.value}(fo)',
 					f'def {deserialization_function}',
 				)
 				.replace(
-					f'def {constants.constants.SerializationMode.MODE_DESERIALIZE}(fo)',
+					f'def {constants.constants.SerializationMode.MODE_DESERIALIZE.value}(fo)',
 					f'def {deserialization_function}',
 				)
 			)

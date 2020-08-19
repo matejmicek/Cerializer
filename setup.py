@@ -1,7 +1,6 @@
 import os
 
-from setuptools import Extension, setup
-
+from setuptools import Extension, setup, find_packages
 
 
 COMPILED_MODULES = {
@@ -25,22 +24,31 @@ except ImportError:
 	if len(EXTENSIONS) != len(COMPILED_MODULES):
 		raise RuntimeError('Cannot cythonize required modules')
 
+ROOT = os.path.dirname(__file__)
 
 setup(
 	name = 'cerializer',
 	author = 'matejmicek.com',
 	author_email = 'matej.micek@quantlane.com',
-	version = '0.0.0',
+	url = 'https://github.com/matejmicek/Cerializer',
+	version = open(os.path.join(ROOT, 'version.txt')).read().strip(),
+	packages = find_packages(exclude = ['test*']),
+	package_data = {
+		'cerializer': [
+			'templates/*.jinja2',
+			'../write.pxd',
+			'../read.pxd',
+			'../prepare.pxd',
+			'../prepare.pyx',
+		],
+	},
 	install_requires = [
 		'Cython>=0.28.4,<1.0.0',
-		'toolz>=0.6.0,<1.0.0',
-		'logwood>=3.4.0,<4.0.0',
-		'ql-fastavro>=0.22.6,<1.0.0',
 		'PyYAML>=5.3.1,<6.0.0',
 		'setuptools>=46.0.0,<47.0.0',
 		'Jinja2>=2.11.2,<3.0.0',
 		'pytz>=2020.1,<2021.0',
-		'ql-schemachinery>=1.6.0,<2.0.0',
+		'ql-qutils>=9.5.2,<10.0.0',
 	],
 	setup_requires = [
 		'Cython>=0.28.4,<1.0.0',

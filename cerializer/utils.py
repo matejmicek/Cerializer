@@ -1,13 +1,13 @@
 # pylint: disable=protected-access
-from typing import Any, Dict, Hashable, Iterator, List, Set, Tuple, Union, Optional
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import copy
 import itertools
 
-import fastavro
+import cerializer.schema_parser
 
 
-def correct_type(type_: str) -> Optional[str]:
+def correct_type(type_: Union[Dict[str, Any], str, List[Any]]) -> Optional[str]:
 	'''
 	Corrects the nuances between Avro type definitions and actual python type names.
 	'''
@@ -19,7 +19,7 @@ def correct_type(type_: str) -> Optional[str]:
 		return 'int'
 	if type_ == 'double':
 		return 'float'
-	if type(type_) is str and type_ in ('int', 'null', 'float', 'bytes'):
+	if isinstance(type_, str) and type_ in ('int', 'null', 'float', 'bytes'):
 		return type_
 	return None
 
@@ -37,17 +37,17 @@ def name_generator(prefix: str) -> Iterator[str]:
 	yield from (f'{prefix}_{i}' for i in itertools.count())
 
 
-def parse_schema(schema: Union[Dict[Hashable, Any], list, None]) -> Any:
+def parse_schema(schema: Union[Dict[str, Any], list, str]) -> Any:
 	'''
 	Wrapper for loading schemata from yaml
 	'''
 	while True:
 		try:
-			parsed = fastavro.parse_schema(schema)
+			parsed = cerializer.schema_parser.parse_schema(schema)
 			return parsed
-		except fastavro.schema.UnknownType as e:
+		except cerializer.schema_parser.UnknownType as e:
 			# we ignore missing schema errors since we are going to fill them in later
-			fastavro._schema_common.SCHEMA_DEFS[e.name] = {}
+			cerializer.schema_parser.SCHEMA_DEFS[e.name] = {}
 
 
 def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Union[str, List, Dict[str, Any]]]:
@@ -55,7 +55,7 @@ def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Union[str, Lis
 	for schema_identifier, schema in schemata:
 		parsed_schema = parse_schema(schema)
 		if '.' in schema_identifier:
-			schema_database[schema_identifier] = fastavro.parse_schema(parsed_schema)
+			schema_database[schema_identifier] = cerializer.schema_parser.parse_schema(parsed_schema)
 		scan_schema_for_subschemata(parsed_schema, schema_database)
 	return schema_database
 

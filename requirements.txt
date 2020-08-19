@@ -1,9 +1,7 @@
-ql-fastavro==0.22.6
 Cython==0.29.16
 PyYAML==5.3.1
 setuptools==46.0.0
 Jinja2==2.11.2
 pytz==2020.1
-
-# Quantlane Requirements
-ql-schemachinery==1.6.0
+# TODO Remove for open source usage
+ql-qutils==9.5.2
