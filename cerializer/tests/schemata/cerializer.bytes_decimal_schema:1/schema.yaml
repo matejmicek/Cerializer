@@ -1,0 +1,8 @@
+name: fixed_decimal
+namespace: cerializer
+type: record
+fields:
+
+  - name: date
+    description: profit
+    type: {"type": "bytes", "name": "date", "logicalType": "decimal", "scale": 2, "precision": 2}

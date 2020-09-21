@@ -1,7 +1,0 @@
-name: fixed_schema
-namespace: messaging
-type: record
-fields:
-
-  - name: profit
-    type: {"type": "fixed", "size": 16, "name": "md5"}

@@ -1,7 +1,0 @@
-name: union_schema
-namespace: messaging
-type: record
-fields:
-
-  - name: cumulative_profit
-    type: ['null', "int"]

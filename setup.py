@@ -1,6 +1,6 @@
 import os
 
-from setuptools import Extension, setup, find_packages
+from setuptools import Extension, find_packages, setup
 
 
 COMPILED_MODULES = {
@@ -22,7 +22,7 @@ try:
 	EXTENSIONS += cythonize(MODULES_TO_BUILD)
 except ImportError:
 	if len(EXTENSIONS) != len(COMPILED_MODULES):
-		raise RuntimeError('Cannot cythonize required modules')
+		raise RuntimeError('Cannot cythonize required modules.')
 
 ROOT = os.path.dirname(__file__)
 
@@ -48,8 +48,12 @@ setup(
 		'setuptools>=46.0.0,<47.0.0',
 		'Jinja2>=2.11.2,<3.0.0',
 		'pytz>=2020.1,<2021.0',
-		'ql-qutils>=9.5.2,<10.0.0',
 	],
+	extras_require = {
+		'quantlane': [
+			'ql-qutils>=9.5.2,<10.0.0'
+		],
+	},
 	setup_requires = [
 		'Cython>=0.28.4,<1.0.0',
 	],

@@ -1,20 +1,21 @@
 # pylint: disable=protected-access
-from typing import Iterator, Tuple
 import io
 import logging
+import os
+from typing import Iterator, Tuple
 
 import fastavro
 import pytest
-import os
-import cerializer.schema_parser
 import yaml
 
-import cerializer.utils
-import cerializer.schema_handler
 import cerializer.cerializer_handler
+import cerializer.schema_handler
+import cerializer.schema_parser
+import cerializer.utils
 
 
-SCHEMA_ROOTS = ['schemata']
+
+SCHEMA_ROOTS = [os.path.join(os.path.dirname(__file__), 'schemata')]
 
 
 def iterate_over_schemata() -> Iterator[Tuple[str, str]]:
@@ -27,8 +28,8 @@ def iterate_over_schemata() -> Iterator[Tuple[str, str]]:
 
 
 def init_fastavro() -> None:
-	for schema_identifier, schema_root in iterate_over_schemata():
-		fastavro._schema_common.SCHEMA_DEFS[schema_identifier] = cerializer.utils.parse_schema(
+	for identifier, schema_root in iterate_over_schemata():
+		fastavro._schema_common.SCHEMA_DEFS[identifier] = cerializer.utils.parse_schema(
 			# mypy things yaml has no attribute unsafe_load, which is not true
 			yaml.unsafe_load(os.path.join(schema_root, 'schema.yaml')) # type: ignore
 		)
@@ -66,9 +67,12 @@ def test_fastavro_compatibility_serialize(
 	)
 	try:
 		# mypy things yaml has no attribute unsafe_load_all, which is not true
-		data_all = yaml.unsafe_load_all(open(os.path.join(schema_root, 'example.yaml'))) # type: ignore
+		data_all = yaml.unsafe_load_all( # type: ignore
+			open(os.path.join(schema_root, 'example.yaml')))
 		SCHEMA_FAVRO = fastavro.parse_schema(
-			yaml.load(open(os.path.join(schema_root, 'schema.yaml')), Loader = yaml.Loader)
+			yaml.load(
+				open(os.path.join(schema_root, 'schema.yaml')), Loader = yaml.Loader
+			)
 		)
 		for data in data_all:
 			output_fastavro = io.BytesIO()
@@ -100,15 +104,19 @@ def test_fastavro_compatibility_deserialize(
 	)
 	try:
 		# mypy things yaml has no attribute unsafe_load_all, which is not true
-		data_all = yaml.unsafe_load_all(open(os.path.join(schema_root, 'example.yaml'))) # type: ignore
-		SCHEMA_FAVRO = yaml.load(open(os.path.join(schema_root, 'schema.yaml')), Loader = yaml.Loader)
+		data_all = yaml.unsafe_load_all( # type: ignore
+			open(os.path.join(schema_root, 'example.yaml'))
+		)
+		SCHEMA_FAVRO = yaml.load(
+			open(os.path.join(schema_root, 'schema.yaml')), Loader = yaml.Loader
+		)
 		for data in data_all:
 			output_fastavro = io.BytesIO()
 			fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
 			output_fastavro.seek(0)
-			deserialized_data = cerializer_codec.deserialize(output_fastavro.getvalue())
+			deserialized = cerializer_codec.deserialize(output_fastavro.getvalue())
 			output_fastavro.seek(0)
-			assert deserialized_data == fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
+			assert deserialized == fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
 	except FileNotFoundError:
 		logging.warning(
 			'Missing schema or Example file for schema == %s',

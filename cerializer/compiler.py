@@ -1,15 +1,15 @@
 # pylint: disable=protected-access, deprecated-method, no-value-for-parameter
-from typing import Any, List
+import distutils.core
 import hashlib
 import importlib.machinery
 import os.path
 import sys
+from typing import Any, List
 
 import Cython.Build.Dependencies
 import Cython.Build.Inline
 import Cython.Compiler.Main
 import Cython.Utils
-import distutils.core
 
 
 def compile_code(code: str) -> Any:

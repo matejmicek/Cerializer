@@ -1,19 +1,23 @@
 #cython: language_level=3
-from libc.time cimport tm, mktime
+import datetime
+import decimal
+import os
+import uuid
+import cerializer.constants
+
 from cpython.int cimport PyInt_AS_LONG
 from cpython.tuple cimport PyTuple_GET_ITEM
-import os
+from libc.time cimport mktime, tm
 from pytz import utc
-import decimal
+
+
+if cerializer.constants.QUANTLANE:
+	import qutils.time.nanotime
+
+
+
 # Mostly taken from fastavro version 0.22.6
 # Original file: https://github.com/fastavro/fastavro/blob/master/fastavro/_logical_writers.pyx
-
-
-import qutils.time.nanotime
-
-import datetime
-import uuid
-
 
 
 '''

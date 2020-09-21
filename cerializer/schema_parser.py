@@ -1,6 +1,7 @@
 # Taken from Fastavro version 0.22.6 due to technical import reasons
 # Original file: https://github.com/fastavro/fastavro/blob/master/fastavro/_logical_writers.pyx
-from typing import Union, Dict, List, Any, Set, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
 
 PRIMITIVES = {
 	'boolean',

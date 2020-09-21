@@ -1,10 +1,11 @@
-from typing import List
-import cerializer.tests.test_cerializer
+import os
+import timeit
+
+import yaml
+
 import cerializer.cerializer_handler
 import cerializer.schema_handler
-import timeit
-import yaml
-import os
+import cerializer.tests.test_cerializer
 
 
 def schemata() -> cerializer.schema_handler.CerializerSchemata:
@@ -19,7 +20,7 @@ def schemata() -> cerializer.schema_handler.CerializerSchemata:
 	return cerializer.schema_handler.CerializerSchemata(schemata)
 
 
-def benchmark(number: int) -> List[str]:
+def benchmark(number: int) -> None:
 	results = []
 	total_cerializer = 0.0
 	total_fastavro = 0.0
@@ -46,23 +47,31 @@ data = list(yaml.unsafe_load_all(open(os.path.join('{path}', 'example.yaml'))))[
 SCHEMA_FAVRO = fastavro.parse_schema(
 	yaml.load(open(os.path.join('{path}', 'schema.yaml')), Loader = yaml.Loader)
 )
-	'''
+		'''
 
-	stmt_cerializer = '''
+		stmt_cerializer = '''
 output_cerializer = cerializer_codec.serialize(data)
-#deserialized_data = cerializer_codec.deserialize(output_cerializer)
-	'''
+deserialized_data = cerializer_codec.deserialize(output_cerializer)
+		'''
 
-	stmt_fastavro = '''
+		stmt_fastavro = '''
 output_fastavro = io.BytesIO()
 fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
-#output_fastavro.seek(0)
-#res = fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
-	'''
+x = output_fastavro.getvalue()
+output_fastavro.seek(0)
+res = fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
+		'''
 
-	result_fastavro = timeit.timeit(stmt = stmt_fastavro, setup = setup, number = number)
-	result_cerializer = timeit.timeit(stmt = stmt_cerializer, setup = setup, number = number)
-	total_cerializer += result_cerializer
-	total_fastavro += result_fastavro
-	results.append(f'{result_fastavro/result_cerializer},   {result_fastavro}:{result_cerializer}')
-	return results
+		result_cerializer = timeit.timeit(stmt = stmt_cerializer, setup = setup, number = number)
+		result_fastavro = timeit.timeit(stmt = stmt_fastavro, setup = setup, number = number)
+		total_cerializer += result_cerializer
+		total_fastavro += result_fastavro
+		results.append(
+			f'{schema_identifier.ljust(36, " ")}   {(result_fastavro/result_cerializer):.4f} times faster,   {result_fastavro:.4f}s : {result_cerializer:.4f}s'
+		)
+	for r in results:
+		print(r)  # dumb_style_checker:disable = print-statement
+	print(  # dumb_style_checker:disable = print-statement
+		f'AVERAGE: {(total_fastavro/total_cerializer):.4f} times faster'
+	)
+

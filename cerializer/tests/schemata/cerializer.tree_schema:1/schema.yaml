@@ -1,0 +1,18 @@
+name: tree_schema:1
+doc: ahoj
+namespace: cerializer
+type: record
+fields:
+
+  - name: lll
+    type:
+      type: record
+      name: reference_t:1
+      fields:
+        - name: man
+          type:
+            type: record
+            name: reference_bb:1
+            fields:
+              - name: plot
+                type: ['string', reference_t:1]

@@ -1,8 +1,6 @@
 # pylint: disable=protected-access
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union
-
-import copy
 import itertools
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import cerializer.schema_parser
 
@@ -70,39 +68,6 @@ def scan_schema_for_subschemata(schema: Any, schema_database: Dict[str, Any]) ->
 	if type(schema) in (list, dict):
 		for subschema in schema:
 			scan_schema_for_subschemata(subschema, schema_database)
-
-
-def cycle_detection(
-	parsed_schema: Dict[str, Any],
-	visited: Set[str],
-	cycle_starting_nodes: Set[str],
-	schema_database: Dict[str, Any],
-) -> None:
-	'''
-	Detects cycles in schemata.
-	This can happen when for example a schema is defined using itself eg. a tree schema.
-	This method add all cycle starting nodes in all schemata_database to cycle_starting_nodes set.
-	'''
-	if isinstance(parsed_schema, str) and parsed_schema in visited:
-		cycle_starting_nodes.add(parsed_schema)
-	elif isinstance(parsed_schema, dict):
-		name = parsed_schema.get('name')
-		type_ = parsed_schema['type']
-		if type(type_) is str and type_ in visited:
-			cycle_starting_nodes.add(type_)
-		elif name:
-			visited.add(name)
-			new_visited = copy.deepcopy(visited)
-			if 'fields' in parsed_schema:
-				for field in parsed_schema['fields']:
-					cycle_detection(field, new_visited, cycle_starting_nodes, schema_database)
-			if type(type_) is dict:
-				cycle_detection(type_, new_visited, cycle_starting_nodes, schema_database)
-			if type(type_) is list:
-				for element in type_:
-					cycle_detection(element, new_visited, cycle_starting_nodes, schema_database)
-			elif type(type_) is str and type_ in schema_database:
-				cycle_detection(schema_database[type_], new_visited, cycle_starting_nodes, schema_database)
 
 
 def get_type_name(type_: Union[str, Dict[str, Any]]) -> Optional[str]:

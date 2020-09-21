@@ -1,0 +1,9 @@
+name: string_uuid_schema
+namespace: cerializer
+type: record
+fields:
+
+  - name: uuid
+    type:
+      type: "string"
+      logicalType: "uuid"

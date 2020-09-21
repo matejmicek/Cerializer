@@ -1,6 +1,5 @@
-from typing import Any, Dict, Union, List
-
 import io
+from typing import Any, Dict, List, Union
 
 import cerializer.compiler
 import cerializer.schema_handler

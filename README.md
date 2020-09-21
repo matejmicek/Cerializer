@@ -1,5 +1,5 @@
 # WIP: Cerializer
-Cerializer is an Avro de/serialization library that aims at providing a even faster alternative to FastAvro and Avro standard library.
+Cerializer is an Avro de/serialization library that aims at providing an even faster alternative to FastAvro and Avro standard library.
 
 This speed increase does not come without a cost. Cerializer will work only with predefined set of schemata for which it will generate tailor made Cython code. This way, the overhead caused by the universality of other serialization libraries will be avoided.
 
@@ -12,7 +12,7 @@ SCHEMA
 {
     'name': 'array_schema', 
     'doc': 'Array schema', 
-    'namespace': 'messaging', 
+    'namespace': 'cerializer', 
     'type': 'record', 
     'fields': [
         {
@@ -92,7 +92,8 @@ def deserialize(fo):
 **Usage Example:**
 1. Create an instance of CerializerSchemata
 For initializing CerializerSchemata it is necessary to supply a list of tuples in form of (schema_identifier, schema)
-schema touple = (namespace.schema_name, {schema})
+where schema_identifier is a string and schema is a dict representing the Avro schema.
+schema tuple = (namespace.schema_name, schema)
  eg.
  ```python
 import cerializer.schema_handler
@@ -121,10 +122,49 @@ This will create an instance of Cerializer that can serialize and deserialize da
   eg. 
   ```python
  data_record = {
-    'name': 'Matej',
-    'age': 22
- }
+    'order_id': 'aaaa', 
+    'trades': [123, 456, 765]
+}
+
  cerializer_instance = cerializer.cerializer_handler.Cerializer(cerializer_schemata, 'school', 'student')
  serialized_data = cerializer_instance.serialize(data_record)
- print(serialized_data.getvalue())
+ print(serialized_data)
 ```
+
+Serialized data
+```
+b'\x08aaaa\x06\x02\xf6\x01\x02\x90\x07\x02\xfa\x0b\x00'
+```
+
+**benchmark** 
+```
+cerializer.huge_schema:1               3.6394 times faster,   1.4231s : 0.3910s
+cerializer.timestamp_schema_micros:1   1.7470 times faster,   0.2759s : 0.1579s
+cerializer.default_schema:1            1.4456 times faster,   0.2392s : 0.1655s
+cerializer.fixed_schema:1              1.6654 times faster,   0.0980s : 0.0589s
+cerializer.map_schema:2                1.6411 times faster,   0.2103s : 0.1281s
+cerializer.enum_schema:1               1.5498 times faster,   0.1079s : 0.0696s
+cerializer.array_schema:2              1.3455 times faster,   4.9207s : 3.6572s
+cerializer.array_schema:3              1.3385 times faster,   2.3153s : 1.7297s
+cerializer.array_schema:4              4.2781 times faster,   12.3307s : 2.8823s
+cerializer.timestamp_schema:1          1.6614 times faster,   0.2454s : 0.1477s
+cerializer.default_schema:3            1.5040 times faster,   0.1191s : 0.0792s
+cerializer.tree_schema:1               4.1126 times faster,   0.6619s : 0.1609s
+cerializer.default_schema:2            1.5767 times faster,   0.1261s : 0.0800s
+cerializer.string_schema:1             1.5083 times faster,   0.2119s : 0.1405s
+cerializer.plain_int:1                 1.8953 times faster,   0.1286s : 0.0678s
+cerializer.union_schema:1              1.9114 times faster,   0.1755s : 0.0918s
+cerializer.fixed_decimal_schema:1      1.2929 times faster,   2.2791s : 1.7627s
+cerializer.int_date_schema:1           2.3736 times faster,   0.1702s : 0.0717s
+cerializer.reference_schema:1          2.1570 times faster,   0.9120s : 0.4228s
+cerializer.bytes_decimal_schema:1      1.6603 times faster,   0.3401s : 0.2049s
+cerializer.string_uuid_schema:1        1.5366 times faster,   0.3236s : 0.2106s
+cerializer.map_schema:1                4.1051 times faster,   0.5873s : 0.1431s
+cerializer.long_time_micros_schema:1   1.9305 times faster,   0.2250s : 0.1166s
+cerializer.array_schema:1              1.4784 times faster,   0.1987s : 0.1344s
+AVERAGE: 2.1894 times faster
+```
+
+Measured against Fastavro using the benchmark in Cerializer/tests.
+
+Device: MacBook Pro 13-inch, 2020, 1,4 GHz Quad-Core Intel Core i5, 16 GB 2133 MHz LPDDR3

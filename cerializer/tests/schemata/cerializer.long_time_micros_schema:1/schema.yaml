@@ -1,0 +1,10 @@
+name: long_time_micros_schema
+namespace: cerializer
+type: record
+fields:
+
+  - name: date
+    description: e
+    type:
+      type: "long"
+      logicalType: "time-micros"

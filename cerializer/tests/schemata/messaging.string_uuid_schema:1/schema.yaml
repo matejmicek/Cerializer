@@ -1,9 +1,0 @@
-name: string_uuid_schema
-namespace: messaging
-type: record
-fields:
-
-  - name: uuid
-    type:
-      type: "string"
-      logicalType: "uuid"
