@@ -32,7 +32,7 @@ jobs:
         python3.8 -m pip install -r requirements.txt 
         python3.8 -m pip install -r dev_requirements.txt
         python3.8 -m pip install ql-cq
-        cq
+        cq -d branch_name_checkbranch_name_check
     - name: pytest
       run: |
         python3.8 -m pip install -r dev_requirements.txt
