@@ -29,14 +29,13 @@ jobs:
         
     - name: pytest
       run: |
+        python3.8 -m pip install --upgrade pip wheel
         python3.8 -m pip install -r dev_requirements.txt
+        python3.8 -m pip install -r requirements.txt 
         pytest
           
     - name: cq
       run: |
-        python3.8 -m pip install --upgrade pip wheel
-        python3.8 -m pip install -r requirements.txt 
-        python3.8 -m pip install -r dev_requirements.txt
         python3.8 -m pip install ql-cq
         cq -d orange -d branch_name_check
     
