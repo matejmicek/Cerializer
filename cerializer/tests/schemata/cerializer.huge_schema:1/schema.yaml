@@ -1,0 +1,25 @@
+name: huge_schema
+namespace: cerializer
+type: record
+fields:
+
+  - name: a
+    type: ['null', "int"]
+  - name: b
+    type: ['string']
+  - name: c
+    type: ['double']
+  - name: d
+    type:
+      type: map
+      values:
+        - string
+        - long
+        - double
+        - boolean
+        - type: map
+          values:
+            - string
+            - long
+            - double
+            - boolean

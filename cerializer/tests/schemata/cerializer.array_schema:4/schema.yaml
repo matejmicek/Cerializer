@@ -1,0 +1,15 @@
+name: array_schema
+doc: Array schema
+namespace: cerializer
+type: record
+fields:
+
+
+- name: order_id
+  doc: 'Id of order'
+  type: string
+
+- name: trades
+  type:
+    type: array
+    items: [string, int]

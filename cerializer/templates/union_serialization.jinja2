@@ -1,5 +1,13 @@
-{%  for type_, number_code, serialization_code in types %}
-{{ correct_constraint(type_, types, location, name, loop.first, value) }}
-    {{ number_code }}
-    {{ serialization_code | indent(4)}}
-{% endfor %}
+if type({% if value %}{{ value }}{% else %}{{ location + ".get('" + name + "')"}}{% endif %}) is tuple:
+    {{ type_name }}, {{ data_name }} = {% if value %}{{ value }}{% else %}{{ location + "['" + name + "']"}}{% endif %}
+    {% for type_, number_code, serialization_code in types %}
+    {% if loop.first %}if{% else %}elif{% endif %} {{ type_name }} == '{{ get_type_name(type_) }}':
+        {{ number_code }}
+        {{ generate_serialization_code(type_, data_name) | indent(8) }}
+    {% endfor %}
+else:
+{%-  for type_, number_code, serialization_code in types %}
+    {{ correct_constraint(type_, location, name, loop.first, value) }}
+        {{ number_code }}
+        {{ serialization_code | indent(8)}}
+{%- endfor %}

@@ -1,0 +1,13 @@
+name: default_array
+namespace: cerializer
+type: record
+fields:
+
+- name: whatever2
+  type: int
+
+- name: whatever
+  default: {}
+  type:
+    type: map
+    values: int

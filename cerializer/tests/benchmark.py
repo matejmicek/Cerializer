@@ -1,165 +1,77 @@
+import os
 import timeit
 
-import texttable
 import yaml
 
 import cerializer.cerializer_handler
-import constants.constants
+import cerializer.schema_handler
+import cerializer.tests.test_cerializer
 
 
-
-NOT_SUPPORTED_JSON = ('fixed', 'timestamp', 'time', 'decimal', 'date', 'uuid')
-
-SCHEMA_ROOT = '/home/development/root_schemata'
-SCHEMA_ROOT = '/home/development/work/Cerializer/cerializer/tests/schemata'
-
-
-def benchmark_schema_serialize(schema_favro, path_cerializer, count, schema_name, schema_identifier):
-	'''
-	Helper function. This should not be used on its own. Use benchmark() instead.
-	'''
-	setup = f'''
-import benchmark
-import fastavro
-import json
-import io
-import json
-import yaml
-import cerializer.compiler
-# fixes a Timeit NameError 'mappingproxy'
-from types import MappingProxyType as mappingproxy
-
-
-schema_favro = {schema_favro}
-data = yaml.unsafe_load(open('{path_cerializer}' + 'example.yaml'))
-parsed_schema = fastavro.parse_schema(schema_favro)
-output = io.BytesIO()
-
-import cerializer.cerializer_handler as c
-import datetime
-from decimal import Decimal
-from uuid import UUID
-import json
-
-buff = io.BytesIO()
-
-x = c.Cerializer(['{SCHEMA_ROOT}']).code['{schema_identifier}']['serialize']
-	'''
-
-	score_string_cerializer = timeit.timeit(
-		stmt = 'x(data, buff)',
-		setup = setup,
-		number = count
-	)
-	score_fastavro_serialize = timeit.timeit(
-		stmt = 'fastavro.schemaless_writer(output, parsed_schema, data)',
-		setup = setup,
-		number = count
-	)
-
-	try:
-		score_json_serialize = timeit.timeit(
-			stmt = 'json.dumps(data)',
-			setup = setup,
-			number = count
+def schemata() -> cerializer.schema_handler.CerializerSchemata:
+	schemata = []
+	for schema_identifier, schema_root in cerializer.tests.test_cerializer.iterate_over_schemata():
+		# mypy things yaml has no attribute unsafe_load, which is not true
+		schema_tuple = (
+			schema_identifier,
+			yaml.unsafe_load(open(os.path.join(schema_root, 'schema.yaml'))),  # type: ignore
 		)
-	except:
-		print(f'Schema = {schema_name} has elements not supported by JSON.')
-		score_json_serialize = 666*score_string_cerializer
-
-	return (
-		score_string_cerializer,
-		score_fastavro_serialize,
-		score_json_serialize
-	)
+		schemata.append(schema_tuple)
+	return cerializer.schema_handler.CerializerSchemata(schemata)
 
 
-
-def benchmark_schema_deserialize(schema_favro, path_cerializer, count, schema_name, schema_identifier):
-	'''
-	Helper function. This should not be used on its own. Use benchmark() instead.
-	'''
-	setup = f'''
-import benchmark
-import fastavro
-import json
-import io
-import yaml
-import cerializer.compiler
-# fixes a Timeit NameError 'mappingproxy'
-from types import MappingProxyType as mappingproxy
-
-
-schema_favro = {schema_favro}
-data = yaml.unsafe_load(open('{path_cerializer}' + 'example.yaml'))
-parsed_schema = fastavro.parse_schema(schema_favro)
-serialized_data = io.BytesIO()
-
-fastavro.schemaless_writer(serialized_data, parsed_schema, data)
-serialized_data.seek(0)
-import cerializer.cerializer_handler as c
-import datetime
-from decimal import Decimal
-from uuid import UUID
-
-x = c.Cerializer(['{SCHEMA_ROOT}']).code['{schema_identifier}']['deserialize']
-	'''
-
-	score_string_cerializer = timeit.timeit(
-		stmt = 'serialized_data.seek(0)\n'
-			   'y = x(serialized_data)',
-		setup = setup,
-		number = count
-	)
-	score_fastavro_serialize = timeit.timeit(
-		stmt = 'serialized_data.seek(0)\n'
-			   'y = fastavro.schemaless_reader(serialized_data, parsed_schema)',
-		setup = setup,
-		number = count
-	)
-
-	return (
-		score_string_cerializer,
-		score_fastavro_serialize,
-		6666
-	)
-
-
-
-def benchmark():
-	'''
-	Benchmarking function. Compares FastAvro, Cerializer and Json.
-	In some cases, Json is not able to serialize given data. In such a case it is given an arbitrary score.
-	'''
-	schemata = list(constants.constants.iterate_over_schemata(SCHEMA_ROOT))
+def benchmark(number: int) -> None:
 	results = []
-	for schema, version in schemata:
-		SCHEMA_FILE = f'{SCHEMA_ROOT}/messaging/{schema}/{version}/schema.yaml'
-		SCHEMA_FAVRO = yaml.load(open(SCHEMA_FILE), Loader = yaml.Loader)
-		result = benchmark_schema_deserialize(
-			path_cerializer = f'{SCHEMA_ROOT}/messaging/{schema}/{version}/',
-			schema_favro = SCHEMA_FAVRO,
-			count = 100000,
-			schema_name = schema,
-			schema_identifier = cerializer.cerializer_handler.get_schema_identifier('messaging', schema, version)
+	total_cerializer = 0.0
+	total_fastavro = 0.0
+	for schema_identifier, path in cerializer.tests.test_cerializer.iterate_over_schemata():
+		setup = f'''
+import cerializer.tests.test_cerializer as t
+import cerializer.tests.benchmark as b
+import yaml
+import cerializer.cerializer_handler
+import fastavro
+import os
+import io
+
+
+t.init_fastavro()
+schema_identifier = '{schema_identifier}'
+CERIALIZER_SCHEMATA = b.schemata()
+cerializer_codec = cerializer.cerializer_handler.Cerializer(
+	cerializer_schemata = CERIALIZER_SCHEMATA,
+	namespace = schema_identifier.split('.')[0],
+	schema_name = schema_identifier.split('.')[1]
+)
+data = list(yaml.unsafe_load_all(open(os.path.join('{path}', 'example.yaml'))))[0]  # type: ignore
+SCHEMA_FAVRO = fastavro.parse_schema(
+	yaml.load(open(os.path.join('{path}', 'schema.yaml')), Loader = yaml.Loader)
+)
+		'''
+
+		stmt_cerializer = '''
+output_cerializer = cerializer_codec.serialize(data)
+deserialized_data = cerializer_codec.deserialize(output_cerializer)
+		'''
+
+		stmt_fastavro = '''
+output_fastavro = io.BytesIO()
+fastavro.schemaless_writer(output_fastavro, SCHEMA_FAVRO, data)
+x = output_fastavro.getvalue()
+output_fastavro.seek(0)
+res = fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
+		'''
+
+		result_cerializer = timeit.timeit(stmt = stmt_cerializer, setup = setup, number = number)
+		result_fastavro = timeit.timeit(stmt = stmt_fastavro, setup = setup, number = number)
+		total_cerializer += result_cerializer
+		total_fastavro += result_fastavro
+		results.append(
+			f'{schema_identifier.ljust(36, " ")}   {(result_fastavro/result_cerializer):.4f} times faster,   {result_fastavro:.4f}s : {result_cerializer:.4f}s'
 		)
+	for r in results:
+		print(r)  # dumb_style_checker:disable = print-statement
+	print(  # dumb_style_checker:disable = print-statement
+		f'AVERAGE: {(total_fastavro/total_cerializer):.4f} times faster'
+	)
 
-		results.append((result[1]/result[0], result[2]/result[0]))
-
-
-	names = [f'{schema[0]}:{str(schema[1])}' for schema in schemata]
-
-
-	table = texttable.Texttable()
-	table.header(['schema', 'FastAvro [x faster]', 'Json [x faster]'])
-	fast_avro_score = [res[0] for res in results]
-	json_score = [res[1] for res in results]
-
-
-	for row in zip(names, fast_avro_score, json_score):
-		table.add_row(row)
-
-	print(table.draw())
-
-
-benchmark()

@@ -1,0 +1,14 @@
+name: default_array
+namespace: cerializer
+type: record
+fields:
+
+- name: id
+  type: int
+
+- name: whatever
+  default: ['a', 'b', 'c']
+  type:
+    type: array
+    items: string
+

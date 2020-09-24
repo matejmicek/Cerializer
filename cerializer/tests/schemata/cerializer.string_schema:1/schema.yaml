@@ -1,0 +1,13 @@
+name: union_schema
+namespace: cerializer
+type: record
+fields:
+
+  - name: whatever
+    type: "string"
+  
+  - name: error
+    type: "string"
+
+  - name: price
+    type: "string"

@@ -1,0 +1,8 @@
+name: fixed_decimal
+namespace: cerializer
+type: record
+fields:
+
+  - name: date
+    description: e
+    type: {"type": "int", "name": "Date", "logicalType": "date"}

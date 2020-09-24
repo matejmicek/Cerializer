@@ -1,0 +1,7 @@
+name: fixed_schema
+namespace: cerializer
+type: record
+fields:
+
+  - name: a
+    type: {"type": "fixed", "size": 16, "name": "md5"}

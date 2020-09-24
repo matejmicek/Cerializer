@@ -1,0 +1,43 @@
+name: reference_schema:1
+doc: ahoj
+namespace: cerializer
+type: record
+fields:
+
+  - name: time
+    doc: 'time'
+    type: string
+
+  - name: group
+    type: string
+    doc: Group
+
+  - name: eee
+    type: string
+    doc: la
+
+  - name: lll
+    type:
+      type: record
+      name: reference_a:1
+      fields:
+        - name: man
+          type:
+            type: record
+            name: reference_b:1
+            fields:
+              - name: plot
+                type:
+                  type: record
+                  name: reference_b_pas:1
+                  fields:
+                    - name: anakonda
+                      type: string
+                    - name: konec
+                      type: string
+
+        - name: car
+          type: reference_b:1
+
+  - name: sss
+    type: reference_a:1

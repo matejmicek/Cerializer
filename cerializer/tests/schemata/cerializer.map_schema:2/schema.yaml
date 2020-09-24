@@ -1,0 +1,10 @@
+name: a
+namespace: cerializer
+type: record
+fields:
+
+
+- name: meta
+  type:
+    type: map
+    values: string

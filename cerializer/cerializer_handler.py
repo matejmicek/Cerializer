@@ -1,62 +1,47 @@
-import os
-
-import jinja2
-
+import io
+from typing import Any, Dict, List, Union
 
 import cerializer.compiler
 import cerializer.schema_handler
-import fastavro
-
-
-'''
-This module deals with schema handeling. 
-The user should only iteract with the update_schemata method.
-'''
+import cerializer.utils
 
 
 class Cerializer:
+	'''
+	The main entry point of Cerializer project.
+	A Cerializer instance renders and then compiles code for given schema.
+	It then provides two methods - serialize and deserialize.
+	These methods are then called by the user to de/serialize data.
+	'''
 
-    def __init__(self, schema_roots):
-        self.schema_roots = schema_roots
-        self.code = {}
-        self.env = jinja2.Environment(
-            loader = jinja2.FileSystemLoader(searchpath = '../templates')
-        )
-        self.env.globals['env'] = self.env
-        self.code_generator = cerializer.schema_handler.CodeGenerator(self.env, self.schema_roots, 'buffer', 'res')
-        self.update_code()
+	def __init__(
+		self,
+		cerializer_schemata: cerializer.schema_handler.CerializerSchemata,
+		namespace: str,
+		schema_name: str,
+	) -> None:
+		'''
+		One can initialize Cerializer with a list of schema_identifier, schema or with a list of schema roots.
+		For schema roots usage checkout README.
+		'''
+		self.schema_identifier = cerializer.utils.get_schema_identifier(namespace, schema_name)
+		self.code_generator = cerializer.schema_handler.CodeGenerator(cerializer_schemata, self.schema_identifier,)
+		self.cerializer_schemata = cerializer_schemata
+		compiled_code = self._get_compiled_code(
+			self.cerializer_schemata.load_schema(self.schema_identifier, self.schema_identifier)
+		)
+		self._serialization_function = compiled_code['serialize']
+		self._deserialization_function = compiled_code['deserialize']
 
+	def deserialize(self, data: bytes) -> Any:
+		data_io = io.BytesIO(data)
+		return self._deserialization_function(data_io)
 
-    def update_code(self):
-        '''
-        Generates code for all schemata in all schema roots and then compiles it.
-        '''
-        for schema_path, schema_identifier in iterate_over_schema_roots(self.schema_roots):
-            schema = cerializer.schema_handler.parse_schema_from_file(schema_path.decode())
-            # TODO REMOVE - for testing purposes only
-            fastavro._schema_common.SCHEMA_DEFS[schema_identifier] = schema
-            self.code[schema_identifier] = self.get_compiled_code(schema)
+	def serialize(self, data: Any) -> bytes:  # the result is stored in the output variable
+		output = io.BytesIO()
+		self._serialization_function(data, output)
+		return output.getvalue()
 
-
-    def get_compiled_code(self, schema):
-        self.code_generator.cdefs = []
-        self.code_generator.necessary_defs = set()
-        code = self.code_generator.render_code(schema)
-        return cerializer.compiler.compile(code)
-
-
-
-def iterate_over_schema_roots(schema_roots):
-    for schema_root in schema_roots:
-        schema_root = os.fsencode(schema_root)
-        for namespace in [f for f in os.listdir(schema_root) if not f.startswith(b'.')]:
-            for schema_name in [f for f in os.listdir(os.path.join(schema_root, namespace)) if not f.startswith(b'.')]:
-                for version in [f for f in os.listdir(os.path.join(schema_root, namespace, schema_name)) if not f.startswith(b'.')]:
-                    schema_path = os.path.join(schema_root, namespace, schema_name, version, b'schema.yaml')
-                    schema_identifier = get_schema_identifier(namespace.decode(), schema_name.decode(), version.decode())
-                    yield schema_path, schema_identifier
-
-
-
-def get_schema_identifier(namespace, schema_name, schema_version):
-    return f'{namespace}.{schema_name}:{schema_version}'
+	def _get_compiled_code(self, schema: Union[str, List[Any], Dict[str, Any]]) -> Any:
+		code = self.code_generator.render_code_with_wraparounds(schema)
+		return cerializer.compiler.compile_code(code)
