@@ -37,7 +37,7 @@ jobs:
           
     - name: cq
       run: |
-        python3.8 -m pip install ql-cq
+        python3.8 -m pip install ql-cq==0.33.0
         cq -d orange -d branch_name_check
     
         
