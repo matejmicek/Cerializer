@@ -16,7 +16,6 @@ import cerializer.tests.dev_utils
 
 
 SCHEMA_ROOTS = cerializer.constants.TEST_SCHEMATA_ROOTS
-SCHEMA_URL = 'http://localhost:8081'
 
 
 
@@ -32,7 +31,7 @@ def schemata() -> cerializer.schemata.CerializerSchemata:
 			open(os.path.join(schema_root, 'schema.yaml'))
 		)
 		schemata.append(schema_tuple)
-	return cerializer.schemata.CerializerSchemata(schemata, SCHEMA_URL)
+	return cerializer.schemata.CerializerSchemata(schemata)
 
 
 @pytest.mark.parametrize(

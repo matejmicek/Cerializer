@@ -29,7 +29,7 @@ PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..')
 
 TEST_SCHEMATA_ROOTS = [
 	os.path.join(PROJECT_ROOT, 'cerializer', 'tests', 'schemata'),
-	os.path.join(PROJECT_ROOT, 'cerializer', 'tests', 'schemata_online'),
+	#os.path.join(PROJECT_ROOT, 'cerializer', 'tests', 'schemata_online'),
 ]
 
 
