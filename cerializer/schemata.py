@@ -27,6 +27,7 @@ class CerializerSchemata:
 		:param schemata_url: url to Kafka schema repo.
 		'''
 		self._schema_database = cerializer.utils.get_subschemata(schemata) if schemata else {}
+		print(self._schema_database)
 		self._schema_code_database = {}
 		self._schemata_url = schemata_url
 		self._cycle_starting_nodes: Set[str] = set()
@@ -48,11 +49,11 @@ class CerializerSchemata:
 	# custom contains definition
 	def __contains__(self, item: str) -> bool:
 		'''
-		Returns whether we have code for the given schema identifier.
+		Returns whether we have the given schema in the database.
 		:param item: schema identifier
-		:return: presence of schema in code database
+		:return: presence of schema in database
 		'''
-		return item in self._schema_code_database
+		return item in self._schema_database
 
 	def get_known_schemata(self) -> Set[str]:
 		'''
