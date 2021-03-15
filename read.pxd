@@ -9,6 +9,19 @@ cdef union double_ulong64:
 
 
 
+'''
+Mostly taken from Fastavro version 0.22.6. Thanks Fastavro!!
+Original file: https://github.com/fastavro/fastavro/blob/master/fastavro/_read.pyx
+
+This module deals with reading data.
+It is only used from within Cerializer.
+
+THIS MODULE SHOULD NOT BE USED ON ITS OWN.
+
+All code strictly follows the Avro standard.
+'''
+
+
 cpdef inline read_null(fo):
 	"""null is written as zero bytes."""
 	return None

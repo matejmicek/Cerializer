@@ -2,6 +2,8 @@ import os
 
 from setuptools import Extension, find_packages, setup
 
+# Cython is necessary even before setup is run.
+os.system('pip install Cython')
 
 COMPILED_MODULES = {
 	'prepare.pyx',
@@ -34,6 +36,7 @@ setup(
 	version = open(os.path.join(ROOT, 'version.txt')).read().strip(),
 	packages = find_packages(exclude = ['test*']),
 	package_data = {
+		'cerializer.tests' : ['*','*/*','*/*/*'],
 		'cerializer': [
 			'templates/*.jinja2',
 			'../write.pxd',
@@ -48,14 +51,12 @@ setup(
 		'setuptools>=46.0.0,<47.0.0',
 		'Jinja2>=2.11.2,<3.0.0',
 		'pytz>=2020.1,<2021.0',
+		'requests>=2.25.1,<3.0.0'
 	],
 	extras_require = {
-		'quantlane': [
-			'ql-qutils>=9.5.2,<10.0.0'
+		'demo': [
+			'fastavro==0.22.6',
 		],
 	},
-	setup_requires = [
-		'Cython>=0.28.4,<1.0.0',
-	],
 	ext_modules = EXTENSIONS,
 )

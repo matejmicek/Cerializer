@@ -2,65 +2,53 @@
 import io
 import logging
 import os
-from typing import Iterator, Tuple
 
 import fastavro
 import pytest
 import yaml
 
-import cerializer.cerializer_handler
-import cerializer.schema_handler
+import cerializer.cerializer
+import cerializer.schemata
 import cerializer.schema_parser
 import cerializer.utils
+import cerializer.constants
+import cerializer.tests.dev_utils
 
 
+SCHEMA_ROOTS = cerializer.constants.TEST_SCHEMATA_ROOTS
+SCHEMA_URL = 'http://localhost:8081'
 
-SCHEMA_ROOTS = [os.path.join(os.path.dirname(__file__), 'schemata')]
-
-
-def iterate_over_schemata() -> Iterator[Tuple[str, str]]:
-	for schema_root in SCHEMA_ROOTS:
-		for schema_identifier in os.listdir(schema_root):
-			if schema_identifier.startswith('.'):
-				# in case of folders automatically added by macOS (.DS_Store)
-				continue
-			yield schema_identifier, os.path.join(schema_root, schema_identifier)
-
-
-def init_fastavro() -> None:
-	for identifier, schema_root in iterate_over_schemata():
-		fastavro._schema_common.SCHEMA_DEFS[identifier] = cerializer.utils.parse_schema(
-			# mypy things yaml has no attribute unsafe_load, which is not true
-			yaml.unsafe_load(os.path.join(schema_root, 'schema.yaml')) # type: ignore
-		)
 
 
 @pytest.fixture(scope = 'module')
-def schemata() -> cerializer.schema_handler.CerializerSchemata:
+def schemata() -> cerializer.schemata.CerializerSchemata:
 	schemata = []
-	for schema_identifier, schema_root in iterate_over_schemata():
+	for schema_identifier, schema_root in cerializer.utils.iterate_over_schemata():
+		if 'schemata_online' in schema_root:
+			# we do not want to add these schemata directly to Cerializer, we want it to download it by itself
+			continue
 		# mypy things yaml has no attribute unsafe_load, which is not true
 		schema_tuple = schema_identifier, yaml.unsafe_load( # type: ignore
 			open(os.path.join(schema_root, 'schema.yaml'))
 		)
 		schemata.append(schema_tuple)
-	return cerializer.schema_handler.CerializerSchemata(schemata)
+	return cerializer.schemata.CerializerSchemata(schemata, SCHEMA_URL)
 
 
 @pytest.mark.parametrize(
 	'schema_identifier, schema_root',
-	iterate_over_schemata(),
+	cerializer.utils.iterate_over_schemata(),
 )
 def test_fastavro_compatibility_serialize(
 	schema_root: str,
 	schema_identifier: str,
-	schemata: cerializer.schema_handler.CerializerSchemata
+	schemata: cerializer.schemata.CerializerSchemata
 ) -> None:
 	# patch for not working avro codec
-	init_fastavro()
+	cerializer.tests.dev_utils.init_fastavro()
 	namespace = schema_identifier.split('.')[0]
 	schema_name = schema_identifier.split('.')[1]
-	cerializer_codec = cerializer.cerializer_handler.Cerializer(
+	cerializer_codec = cerializer.cerializer.Cerializer(
 		cerializer_schemata = schemata,
 		namespace = namespace,
 		schema_name = schema_name,
@@ -86,18 +74,18 @@ def test_fastavro_compatibility_serialize(
 
 @pytest.mark.parametrize(
 	'schema_identifier, schema_root',
-	iterate_over_schemata(),
+	cerializer.utils.iterate_over_schemata(),
 )
 def test_fastavro_compatibility_deserialize(
 	schema_root: str,
 	schema_identifier: str,
-	schemata: cerializer.schema_handler.CerializerSchemata
+	schemata: cerializer.schemata.CerializerSchemata
 ) -> None:
 	# patch for not working avro codec
-	init_fastavro()
+	cerializer.tests.dev_utils.init_fastavro()
 	namespace = schema_identifier.split('.')[0]
 	schema_name = schema_identifier.split('.')[1]
-	cerializer_codec = cerializer.cerializer_handler.Cerializer(
+	cerializer_codec = cerializer.cerializer.Cerializer(
 		cerializer_schemata = schemata,
 		namespace = namespace,
 		schema_name = schema_name,

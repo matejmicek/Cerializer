@@ -6,6 +6,7 @@ import os.path
 import sys
 from typing import Any, List
 
+import Cython
 import Cython.Build.Dependencies
 import Cython.Build.Inline
 import Cython.Compiler.Main
@@ -13,10 +14,21 @@ import Cython.Utils
 
 
 def compile_code(code: str) -> Any:
+	'''
+	Public function for code compilation.
+	:param code: string representation of the code to be compiled.
+	:return: Compiled code.
+	'''
 	return _cython_inline(code)
 
 
 def _load_dynamic(name: str, module_path: str) -> Any:
+	'''
+	Function for dynamic loading of extensions.
+	:param name: name of extension
+	:param module_path: path to module
+	:return: imported extension
+	'''
 	# mypy does not understand ExtensionFileLoader init
 	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module()  # type: ignore
 
@@ -25,6 +37,12 @@ def _cython_inline(
 	complete_code: str,
 	lib_dir: str = os.path.join(Cython.Utils.get_cython_cache_dir(), 'inline'),
 ) -> Any:
+	'''
+	Compiles any Cython code at runtime.
+	:param complete_code: code to copile
+	:param lib_dir: cash dir
+	:return: Compiled code.
+	'''
 	key = complete_code, sys.version_info, sys.executable, 3, Cython.__version__
 	module_name = '_cython_inline_' + hashlib.md5(str(key).encode('utf-8')).hexdigest()
 
@@ -37,7 +55,8 @@ def _cython_inline(
 
 	if not os.path.exists(lib_dir):
 		os.makedirs(lib_dir)
-	cflags: List[str] = []
+	# -w silences gcc
+	cflags: List[str] = ['-w']
 	c_include_dirs: List[str] = []
 	pyx_file = os.path.join(lib_dir, module_name + '.pyx')
 	fh = open(pyx_file, 'w')
@@ -61,7 +80,5 @@ def _cython_inline(
 	build_extension.build_temp = os.path.dirname(pyx_file)
 	build_extension.build_lib = lib_dir
 	build_extension.run()
-
 	module = _load_dynamic(module_name, module_path)
-
 	return module.__invoke()

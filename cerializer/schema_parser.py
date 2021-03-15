@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 
+# primitive types
 PRIMITIVES = {
 	'boolean',
 	'bytes',
@@ -54,6 +55,14 @@ def parse_schema(
 	_write_hint: bool = True,
 	_force: bool = False,
 ) -> Union[Dict[str, Any], str, List]:
+	'''
+	Public method for parsing schemata.
+	:param schema: schema to parses
+	:param expand: expand schema?
+	:param _write_hint: hint
+	:param _force: force parse
+	:return: Parsed schema
+	'''
 	if _force or expand:
 		return _parse_schema(schema, '', expand, _write_hint, set())
 	elif isinstance(schema, dict) and '__fastavro_parsed' in schema:
@@ -73,6 +82,15 @@ def _parse_schema(
 	_write_hint: bool,
 	named_schemas: Set[str],
 ) -> Union[Dict[str, Any], str, List]:
+	'''
+	Private parsing function. Should not be used from outside.
+	:param schema: schema to parse
+	:param namespace: namespace of schema
+	:param expand: expand schema?
+	:param _write_hint: hint
+	:param named_schemas: set of known named schemata
+	:return: Parsed schema
+	'''
 	# union schemas
 	if isinstance(schema, list):
 		return [_parse_schema(s, namespace, expand, False, named_schemas) for s in schema]
@@ -183,6 +201,14 @@ def parse_field(
 	expand: bool,
 	named_schemas: Set[str],
 ) -> Dict[str, Any]:
+	'''
+	Parse schema field.
+	:param field: field to parse
+	:param namespace: namespace of schema
+	:param expand: expand schema?
+	:param named_schemas: known named schemata
+	:return: Parsed field
+	'''
 	parsed_field = {key: value for key, value in field.items() if key not in RESERVED_FIELD_PROPERTIES}
 
 	for prop in OPTIONAL_FIELD_PROPERTIES:
@@ -202,6 +228,12 @@ def parse_field(
 
 
 def schema_name(schema: Dict[str, Any], parent_ns: Optional[str]) -> Tuple[str, str]:
+	'''
+	Getter for schema name.
+	:param schema: schema
+	:param parent_ns: parent namespace
+	:return: string tuple in format ('namespace', 'namespace.name')
+	'''
 	try:
 		name = schema['name']
 	except KeyError:

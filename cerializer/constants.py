@@ -3,6 +3,9 @@ import importlib.util
 import os
 
 
+'''
+File to store all necessary constants within Cerializer.
+'''
 BOOLEAN = 'boolean'
 INT = 'int'
 LONG = 'long'
@@ -24,7 +27,10 @@ COMPLEX_TYPES = {RECORD, ENUM, ARRAY, MAP, FIXED}
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..')
 
 
-SCHEMA_ROOTS = [os.path.join(PROJECT_ROOT, 'cerializer', 'tests', 'schemata')]
+TEST_SCHEMATA_ROOTS = [
+	os.path.join(PROJECT_ROOT, 'cerializer', 'tests', 'schemata'),
+	os.path.join(PROJECT_ROOT, 'cerializer', 'tests', 'schemata_online'),
+]
 
 
 class SerializationMode(enum.Enum):
@@ -34,6 +40,7 @@ class SerializationMode(enum.Enum):
 
 QUANTLANE = False
 
+# developed solely fow Quantlane purposes
 package_name = 'qutils'
 spec = importlib.util.find_spec(package_name)
 if spec:

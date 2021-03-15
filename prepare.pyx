@@ -1,4 +1,5 @@
 #cython: language_level=3
+
 import datetime
 import decimal
 import os
@@ -15,15 +16,18 @@ if cerializer.constants.QUANTLANE:
 	import qutils.time.nanotime
 
 
-
-# Mostly taken from fastavro version 0.22.6
-# Original file: https://github.com/fastavro/fastavro/blob/master/fastavro/_logical_writers.pyx
-
-
 '''
+Mostly taken from Fastavro version 0.22.6. Thanks Fastavro!!
+Original file: https://github.com/fastavro/fastavro/blob/master/fastavro/_logical_writers.pyx
+
 This module deals with preparation of logical types.
 It is only used from within Cerializer.
+
+THIS MODULE SHOULD NOT BE USED ON ITS OWN.
+
+All code strictly follows the Avro standard.
 '''
+
 
 
 

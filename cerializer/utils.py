@@ -3,11 +3,15 @@ import itertools
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import cerializer.schema_parser
+import cerializer.constants
+import os
 
 
 def correct_type(type_: Union[Dict[str, Any], str, List[Any]]) -> Optional[str]:
 	'''
 	Corrects the nuances between Avro type definitions and actual python type names.
+	:param type_: type to correct
+	:return: correct type
 	'''
 	if type_ == 'string':
 		return 'str'
@@ -23,6 +27,12 @@ def correct_type(type_: Union[Dict[str, Any], str, List[Any]]) -> Optional[str]:
 
 
 def get_logical_type_constraint(schema: Dict[str, Any], location: str) -> str:
+	'''
+	Returns a correct constraint for logical types.
+	:param schema: schema with a logical type
+	:param location: location
+	:return: type constraint
+	'''
 	logical_type = schema['logicalType'].replace('-', '_')
 	data_type = schema['type']
 	if logical_type == 'decimal':
@@ -32,12 +42,19 @@ def get_logical_type_constraint(schema: Dict[str, Any], location: str) -> str:
 
 
 def name_generator(prefix: str) -> Iterator[str]:
+	'''
+	Unique name generator for the entire code generation session.
+	:param prefix: prefix of the variable name
+	:return: Iterator of variable names
+	'''
 	yield from (f'{prefix}_{i}' for i in itertools.count())
 
 
 def parse_schema(schema: Union[Dict[str, Any], list, str]) -> Any:
 	'''
 	Wrapper for loading schemata from yaml
+	:param schema: schema to parse
+	:return: Parsed schema
 	'''
 	while True:
 		try:
@@ -89,3 +106,12 @@ def default_if_necessary(location: str, default: Any) -> str:
 
 def get_schema_identifier(namespace: str, schema_name: str) -> str:
 	return f'{namespace}.{schema_name}'
+
+
+def iterate_over_schemata() -> Iterator[Tuple[str, str]]:
+	for schema_root in cerializer.constants.TEST_SCHEMATA_ROOTS:
+		for schema_identifier in os.listdir(schema_root):
+			if schema_identifier.startswith('.'):
+				# in case of folders automatically added by macOS (.DS_Store)
+				continue
+			yield schema_identifier, os.path.join(schema_root, schema_identifier)
