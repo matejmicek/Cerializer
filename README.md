@@ -91,49 +91,57 @@ def deserialize(fo):
 
 **Usage Example:**
 1. Create an instance of CerializerSchemata
-For initializing CerializerSchemata it is necessary to supply a list of tuples in form of (schema_identifier, schema)
-where schema_identifier is a string and schema is a dict representing the Avro schema.
-schema tuple = (namespace.schema_name, schema)
- eg.
- ```python
-import cerializer.schema_handler
-import os
-import yaml
+For initializing CerializerSchemata it is necessary to supply a list of tuples in form of (schema_identifier, schema) 
+where schema_identifier is a string and schema is a dict representing the Avro schema and/or an url to Kafka Schema Repository.
+schema tuple = (namespace.schema_name, schema).
 
-def list_schemata():
-    # iterates through all your schemata and yields schema_identifier and path to schema folder
+It is also highly recommended to reuse this schemata instance since on init, it compiles all the schemata which is usually computationally expensive.
+eg.
+ ```python
+import cerializer.schemata
+
+
+
+KAFKA_URL = '...'
+
+def get_schemata_from_local_repo():
+    # iterates through all your schemata and return a list of 
+    # (schema_identifier, schema) tuples
     raise NotImplemented
 
-def schemata() -> cerializer.schema_handler.CerializerSchemata:
-    schemata = []
-	for schema_identifier, schema_root in list_schemata():
-		schema_tuple = schema_identifier, yaml.unsafe_load( # type: ignore
-			open(os.path.join(schema_root, 'schema.yaml'))
-		)
-		schemata.append(schema_tuple)
-	return cerializer.schema_handler.CerializerSchemata(schemata)
+cerializer_schemata = cerializer.schemata.CerializerSchemata(
+    get_schemata_from_local_repo(), 
+    KAFKA_URL
+)
 ```
 
-2. Create an instance of Cerializer for each of your schemata by calling `cerializer_handler.Cerializer` .
-eg. `cerializer_instance = cerializer_handler.Cerializer(cerializer_schemata, schema_namespace, schema_name)`
+2. Create an instance of Cerializer for each of your schemata by calling `cerializer.Cerializer` .
+eg. `cerializer_instance = cerializer.Cerializer(cerializer_schemata, schema_namespace, schema_name)`
 This will create an instance of Cerializer that can serialize and deserialize data in the particular schema format.
 
 3. Use the instance accordingly.
   eg. 
   ```python
- data_record = {
+data_record = {
     'order_id': 'aaaa', 
     'trades': [123, 456, 765]
 }
 
- cerializer_instance = cerializer.cerializer_handler.Cerializer(cerializer_schemata, 'school', 'student')
+ cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'school', 'student')
  serialized_data = cerializer_instance.serialize(data_record)
  print(serialized_data)
+
+deserialized_data = cerializer_instance.deserialize(serialized_data)
+print(deserialized_data)
 ```
 
-Serialized data
+Output
 ```
 b'\x08aaaa\x06\x02\xf6\x01\x02\x90\x07\x02\xfa\x0b\x00'
+{
+    'order_id': 'aaaa', 
+    'trades': [123, 456, 765]
+}
 ```
 
 **benchmark** 
