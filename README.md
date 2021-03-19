@@ -96,57 +96,57 @@ This Cython code is later compiled into C and imported.
 For initializing CerializerSchemata it is necessary to supply a list of tuples in form of (schema_identifier, schema) 
 where schema_identifier is a string and schema is a dict representing the Avro schema and/or an url to Kafka Schema Repository.
 schema tuple = (namespace.schema_name, schema).
-
 It is also highly recommended to reuse this schemata instance since on init, it compiles all the schemata which is usually computationally expensive.
 eg.
- ```python
-import cerializer.schemata
+    ```python
+    import cerializer.schemata
+    
+    
+    
+    KAFKA_URL = '...'
+    
+    def get_schemata_from_local_repo():
+        # iterates through all your schemata and return a list of 
+        # (schema_identifier, schema) tuples
+        raise NotImplemented
+    
+    cerializer_schemata = cerializer.schemata.CerializerSchemata(
+        get_schemata_from_local_repo(), 
+        KAFKA_URL
+    )
+    ```
 
-
-
-KAFKA_URL = '...'
-
-def get_schemata_from_local_repo():
-    # iterates through all your schemata and return a list of 
-    # (schema_identifier, schema) tuples
-    raise NotImplemented
-
-cerializer_schemata = cerializer.schemata.CerializerSchemata(
-    get_schemata_from_local_repo(), 
-    KAFKA_URL
-)
-```
-
-2. Create an instance of Cerializer for each of your schemata by calling `cerializer.Cerializer` .
+1. Create an instance of Cerializer for each of your schemata by calling `cerializer.Cerializer` .
 eg. `cerializer_instance = cerializer.Cerializer(cerializer_schemata, schema_namespace, schema_name)`
 This will create an instance of Cerializer that can serialize and deserialize data in the particular schema format.
 
 3. Use the instance accordingly.
   eg. 
-  ```python
-data_record = {
-    'order_id': 'aaaa', 
-    'trades': [123, 456, 765]
-}
+    ```python
+    data_record = {
+        'order_id': 'aaaa', 
+        'trades': [123, 456, 765]
+    }
+    
+     cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'school', 'student')
+     serialized_data = cerializer_instance.serialize(data_record)
+     print(serialized_data)
+    
+    deserialized_data = cerializer_instance.deserialize(serialized_data)
+    print(deserialized_data)
+    ```
 
- cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'school', 'student')
- serialized_data = cerializer_instance.serialize(data_record)
- print(serialized_data)
+    Output
+    ```python
+    b'\x08aaaa\x06\x02\xf6\x01\x02\x90\x07\x02\xfa\x0b\x00'
+    
+   {
+        'order_id': 'aaaa', 
+        'trades': [123, 456, 765]
+    }
+    ```
 
-deserialized_data = cerializer_instance.deserialize(serialized_data)
-print(deserialized_data)
-```
-
-Output
-```
-b'\x08aaaa\x06\x02\xf6\x01\x02\x90\x07\x02\xfa\x0b\x00'
-{
-    'order_id': 'aaaa', 
-    'trades': [123, 456, 765]
-}
-```
-
-**benchmark** 
+**Benchmark** 
 ```
 cerializer.huge_schema:1               3.6394 times faster,   1.4231s : 0.3910s
 cerializer.timestamp_schema_micros:1   1.7470 times faster,   0.2759s : 0.1579s
