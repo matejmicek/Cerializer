@@ -88,6 +88,8 @@ def deserialize(fo):
     return data
 ```
 
+This Cython code is later compiled into C and imported.
+
 
 **Usage Example:**
 1. Create an instance of CerializerSchemata
