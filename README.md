@@ -128,7 +128,7 @@ This will create an instance of Cerializer that can serialize and deserialize da
         'trades': [123, 456, 765]
     }
     
-     cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'school', 'student')
+     cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'broker', 'trades')
      serialized_data = cerializer_instance.serialize(data_record)
      print(serialized_data)
     
