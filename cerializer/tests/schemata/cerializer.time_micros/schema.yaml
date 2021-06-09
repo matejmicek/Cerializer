@@ -1,0 +1,10 @@
+name: time_micros
+namespace: cerializer
+type: record
+fields:
+
+  - name: date
+    description: e
+    type:
+      type: "long"
+      logicalType: "time-micros"

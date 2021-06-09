@@ -1,7 +1,0 @@
-name: union_schema
-namespace: cerializer
-type: record
-fields:
-
-  - name: c
-    type: ['null', "int"]

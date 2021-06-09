@@ -1,0 +1,14 @@
+name: fixed_decimal
+namespace: cerializer
+type: record
+fields:
+
+  - name: date0
+    description: a
+    type: {"type": "fixed", "size": 16, "name": "date00", "logicalType": "decimal", "scale": 2, "precision": 2}
+  - name: date1
+    description: a
+    type: {"type": "fixed", "size": 16, "name": "date11", "logicalType": "decimal", "scale": 2, "precision": 2}
+  - name: date2
+    description: a
+    type: {"type": "fixed", "size": 16, "name": "date22", "logicalType": "decimal", "scale": 2, "precision": 2}

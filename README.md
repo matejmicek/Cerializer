@@ -1,9 +1,64 @@
-# WIP: Cerializer
+# Cerializer
 Cerializer is an Avro de/serialization library that aims at providing an even faster alternative to FastAvro and Avro standard library.
 
 This speed increase does not come without a cost. Cerializer will work only with predefined set of schemata for which it will generate tailor made Cython code. This way, the overhead caused by the universality of other serialization libraries will be avoided.
 
 Special credit needs to be given to [FastAvro](https://github.com/fastavro/fastavro) library, by which is this project heavily inspired.
+
+**Demonstration shell scripts**
+
+To see Cerializer in action, we can utilize three ready-made shell scripts.
+
+Prerequisites:
+- Linux or MacOS (or Windows with Windows Subsystem for Linux)
+- pip installed on the machine
+- python3 installed on the machine
+- the ROOT directory of the project opened in terminal
+
+**To run a basic demonstration:**
+
+```bash
+./demo.sh
+```
+
+**Server-Client demonstration**
+This demonstration can be performed either with or without a running Confluent Platform. To set up a Confluent Platform, please follow only Step 1 of this quickstart: https://docs.confluent.io/platform/current/quickstart/ce-quickstart.html#step-1-download-and-start-cp. 
+
+If you decide to run the demonstration without Kafka, you will see a client sending messages to a server. These messages will have a special id which is first displayed by the client and then by the server when the messages are received.
+
+If you decide to use Kafka, the procedure will be the same except for the client and the server updating themselves with the schema repository (Kafka). This behaviour is indicated by the script printing "updating with schema repo." There are no schemata in the repository yet, but if you decide to add any by adding a Kafka topic (https://docs.confluent.io/platform/current/quickstart/ce-quickstart.html#step-2-create-ak-topics). Then, to add a schema in the Control Center in the newly created topic, click on schema -> Set a schema -> Optionally create a custom schema -> Create.
+
+The new schema should be now recognised on the next update by the server and the client. Success is indicated by printing:
+
+```
+updating with schema repo
+finished compiling new_schema:1
+```
+
+**To launch a server that will wait for clients messages and use Cerializer to deserialize them (client needs to be started later):**
+
+No Kafka:
+```bash
+./demo_server.sh
+```
+
+With Kafka running (if port was left to default, replace otherwise):
+```bash
+./demo_server.sh 'http://localhost:8081'
+```
+
+
+**To launch the client:**
+
+No Kafka:
+```bash
+./demo_client.sh
+```
+
+With Kafka running (if port was left to default, replace otherwise):
+```bash
+./demo_client.sh 'http://localhost:8081'
+```
 
 **Example of a schema and the corresponding code**
 
@@ -128,7 +183,7 @@ This will create an instance of Cerializer that can serialize and deserialize da
         'trades': [123, 456, 765]
     }
     
-     cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'broker', 'trades')
+     cerializer_instance = cerializer.cerializer.Cerializer(cerializer_schemata, 'school', 'student')
      serialized_data = cerializer_instance.serialize(data_record)
      print(serialized_data)
     
@@ -147,32 +202,30 @@ This will create an instance of Cerializer that can serialize and deserialize da
     ```
 
 **Benchmark** 
+This benchmark was executed using the `benchmark.py` script in `cerializer/tests`. Note that the times are normalized into the interval [0, 1].
 ```
-cerializer.huge_schema:1               3.6394 times faster,   1.4231s : 0.3910s
-cerializer.timestamp_schema_micros:1   1.7470 times faster,   0.2759s : 0.1579s
-cerializer.default_schema:1            1.4456 times faster,   0.2392s : 0.1655s
-cerializer.fixed_schema:1              1.6654 times faster,   0.0980s : 0.0589s
-cerializer.map_schema:2                1.6411 times faster,   0.2103s : 0.1281s
-cerializer.enum_schema:1               1.5498 times faster,   0.1079s : 0.0696s
-cerializer.array_schema:2              1.3455 times faster,   4.9207s : 3.6572s
-cerializer.array_schema:3              1.3385 times faster,   2.3153s : 1.7297s
-cerializer.array_schema:4              4.2781 times faster,   12.3307s : 2.8823s
-cerializer.timestamp_schema:1          1.6614 times faster,   0.2454s : 0.1477s
-cerializer.default_schema:3            1.5040 times faster,   0.1191s : 0.0792s
-cerializer.tree_schema:1               4.1126 times faster,   0.6619s : 0.1609s
-cerializer.default_schema:2            1.5767 times faster,   0.1261s : 0.0800s
-cerializer.string_schema:1             1.5083 times faster,   0.2119s : 0.1405s
-cerializer.plain_int:1                 1.8953 times faster,   0.1286s : 0.0678s
-cerializer.union_schema:1              1.9114 times faster,   0.1755s : 0.0918s
-cerializer.fixed_decimal_schema:1      1.2929 times faster,   2.2791s : 1.7627s
-cerializer.int_date_schema:1           2.3736 times faster,   0.1702s : 0.0717s
-cerializer.reference_schema:1          2.1570 times faster,   0.9120s : 0.4228s
-cerializer.bytes_decimal_schema:1      1.6603 times faster,   0.3401s : 0.2049s
-cerializer.string_uuid_schema:1        1.5366 times faster,   0.3236s : 0.2106s
-cerializer.map_schema:1                4.1051 times faster,   0.5873s : 0.1431s
-cerializer.long_time_micros_schema:1   1.9305 times faster,   0.2250s : 0.1166s
-cerializer.array_schema:1              1.4784 times faster,   0.1987s : 0.1344s
-AVERAGE: 2.1894 times faster
+schema, time_cerializer, time_fastavro, time_avro
+cerializer.array_int_str            ,0.03717227738867462,0.09904868034296802,1.0
+cerializer.enum                     ,0.048077945812758136,0.07441811969170659,1.0
+cerializer.str                      ,0.09283684814105748,0.12196546031964381,1.0
+cerializer.boolean                  ,0.09427573269822606,0.19705318200832128,1.0
+cerializer.time_micros              ,0.09606025976542311,0.1788007017680777,1.0
+cerializer.union                    ,0.060184068066858026,0.1813994477900716,1.0
+cerializer.reference                ,0.06198405651031086,0.11474401653960228,1.0
+cerializer.fixed                    ,0.06252474812476431,0.10319272255475644,1.0
+cerializer.int                      ,0.12912923935835008,0.21864098615776942,1.0
+cerializer.fixed_decimal            ,0.4118826653983815,0.39155348359636166,1.0
+cerializer.array_str                ,0.11198333128456968,0.12303638986216604,1.0
+cerializer.decimal                  ,0.22093593577251328,0.5555941832921116,1.0
+cerializer.nested                   ,0.04412209825367442,0.1253421778625141,1.0
+cerializer.map_str                  ,0.10425944117425574,0.17391576854275986,1.0
+cerializer.map_int_null             ,0.05494826231827742,0.10157567561100056,1.0
+cerializer.double                   ,0.05018755906953313,0.07678813441659749,1.0
+cerializer.bytes                    ,0.06720745759338456,0.10033397964242413,1.0
+cerializer.long                     ,0.05210266110360744,0.07486254385198769,1.0
+cerializer.date_int                 ,0.09069971820674391,0.18936284577559476,1.0
+cerializer.array_bool               ,0.04280888532797152,0.07022321886620599,1.0
+cerializer.array_int                ,0.04993196162094609,0.06142152243472576,1.0
 ```
 
 Measured against Fastavro using the benchmark in Cerializer/tests.

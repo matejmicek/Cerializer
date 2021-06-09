@@ -235,6 +235,7 @@ cdef inline prepare_uuid(object data):
 
 
 
+
 cdef inline prepare_time_millis(object data):
 	if isinstance(data, datetime.time):
 		return int(
@@ -274,6 +275,9 @@ cdef inline read_date(data):
 	return datetime.date.fromordinal(data + datetime.date(1970, 1, 1).toordinal())
 
 cdef inline read_uuid(data):
+	return uuid.UUID(data)
+
+cdef inline read_UUID(data):
 	return uuid.UUID(data)
 
 cdef inline read_decimal(data, schema):

@@ -1,0 +1,7 @@
+name: fixed
+namespace: cerializer
+type: record
+fields:
+
+  - name: a
+    type: {"type": "fixed", "size": 3, "name": "md5"}

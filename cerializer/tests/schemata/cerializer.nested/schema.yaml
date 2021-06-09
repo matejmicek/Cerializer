@@ -1,0 +1,19 @@
+name: nested
+namespace: cerializer
+type: record
+fields:
+
+  - name: d
+    type:
+      type: map
+      values:
+        - string
+        - long
+        - double
+        - boolean
+        - type: map
+          values:
+            - string
+            - long
+            - double
+            - boolean

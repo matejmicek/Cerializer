@@ -1,0 +1,11 @@
+
+*.doctree
+*.html
+*.woff2
+*.woff
+*.css
+*.js
+docs/*
+.idea/
+.DS_Store
+__pycache__

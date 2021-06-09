@@ -1,0 +1,13 @@
+name: enum
+namespace: cerializer
+type: record
+fields:
+
+- name: aaa
+  type:
+    type: enum
+    name: AAA
+    symbols:
+      - AAA
+      - BBB
+      - CCC

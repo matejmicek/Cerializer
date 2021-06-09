@@ -1,0 +1,11 @@
+name: array_bool
+doc: Array schema
+namespace: cerializer
+type: record
+fields:
+
+
+- name: trades2
+  type:
+    type: array
+    items: boolean

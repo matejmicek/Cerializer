@@ -16,7 +16,6 @@ class DictWrapper(dict):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-@cython.initializedcheck(False)
 def __invoke():
     {{ code | indent(4) }}
     return locals()

@@ -1,0 +1,11 @@
+name: array_str
+doc: Array schema
+namespace: cerializer
+type: record
+fields:
+
+
+- name: trades
+  type:
+    type: array
+    items: string

@@ -1,0 +1,7 @@
+name: str
+namespace: cerializer
+type: record
+fields:
+
+  - name: whatever
+    type: "string"

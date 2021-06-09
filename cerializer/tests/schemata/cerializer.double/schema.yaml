@@ -1,0 +1,7 @@
+name: double
+namespace: cerializer
+type: record
+fields:
+
+  - name: whatever
+    type: "float"

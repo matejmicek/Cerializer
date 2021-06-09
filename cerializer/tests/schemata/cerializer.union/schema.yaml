@@ -1,0 +1,7 @@
+name: union
+namespace: cerializer
+type: record
+fields:
+
+  - name: c
+    type: ['null', "int", "string"]

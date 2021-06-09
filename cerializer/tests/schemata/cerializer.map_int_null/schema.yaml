@@ -1,0 +1,12 @@
+name: map_int_null
+namespace: cerializer
+type: record
+fields:
+
+
+- name: meta
+  type:
+    type: map
+    values:
+      - "null"
+      - "int"

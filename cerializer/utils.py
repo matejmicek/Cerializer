@@ -70,7 +70,10 @@ def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Union[str, Lis
 	for schema_identifier, schema in schemata:
 		parsed_schema = parse_schema(schema)
 		if '.' in schema_identifier:
-			schema_database[schema_identifier] = cerializer.schema_parser.parse_schema(parsed_schema)
+			if schema_identifier not in schema_database:
+				schema_database[schema_identifier] = cerializer.schema_parser.parse_schema(
+					parsed_schema
+				)
 		scan_schema_for_subschemata(parsed_schema, schema_database)
 	return schema_database
 
@@ -78,7 +81,7 @@ def get_subschemata(schemata: List[Tuple[str, Any]]) -> Dict[str, Union[str, Lis
 def scan_schema_for_subschemata(schema: Any, schema_database: Dict[str, Any]) -> None:
 	if type(schema) is dict:
 		name = schema.get('name')
-		if name and '.' in name:
+		if name and '.' in name and len(name.split('.')) < 3 and name not in schema_database:
 			schema_database[name] = schema
 		for _, subschema in schema.items():
 			scan_schema_for_subschemata(subschema, schema_database)

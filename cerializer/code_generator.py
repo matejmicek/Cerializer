@@ -58,7 +58,7 @@ class CodeGenerator:
 		:param schema: schema
 		:return: preparation string
 		'''
-		logical_type = logical_type.replace('-', '_')
+		logical_type = logical_type.replace('-', '_').lower()
 
 		if 'nano_time' in logical_type and not constants.QUANTLANE:
 			raise RuntimeError('Trying to serialize Nano Time logical type without the flag quantlane being True. ')
@@ -474,7 +474,8 @@ class CodeGenerator:
 					(self._generate_deserialization_code(field, location))
 					for field in schema['fields']
 				)
-				return location + ' = {}\n' + field_deserialization
+				init_location = location if location != 'data' else 'cdef dict data'
+				return init_location + ' = {}\n' + field_deserialization
 			elif type_ == constants.ARRAY:
 				return self._get_array_deserialization(schema, location)
 			elif type_ == constants.ENUM:

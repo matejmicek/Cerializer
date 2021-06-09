@@ -2,11 +2,14 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+
+
 import yaml
 import timeit
 import cerializer.cerializer
 import cerializer.schemata
 import cerializer.utils
+import tqdm
 
 
 
@@ -15,26 +18,24 @@ schemata = None
 
 def get_schemata() -> cerializer.schemata.CerializerSchemata:
 	schemata = []
-	for schema_identifier, schema_root in cerializer.utils.iterate_over_schemata():
+	for schema_identifier, schema_root in tqdm.tqdm(
+			list(cerializer.utils.iterate_over_schemata()),
+			desc = 'Loading schemata'
+	):
 		# mypy things yaml has no attribute unsafe_load, which is not true
 		schema_tuple = (
 			schema_identifier,
 			yaml.unsafe_load(open(os.path.join(schema_root, 'schema.yaml'))),  # type: ignore
 		)
 		schemata.append(schema_tuple)
-	print(f'Compiling code for {len(schemata)} Cerializer schemata.')
-	return cerializer.schemata.CerializerSchemata(schemata)
+	return cerializer.schemata.CerializerSchemata(schemata, verbose = True)
 
 
-def benchmark(number: int = 1000, preheat_number: int = 1000) -> str:
-	print(f'Starting Benchmark.')
-	print()
+def benchmark(number: int = 1000, preheat_number: int = 10) -> str:
 	results = []
-	total_cerializer = 0.0
-	total_fastavro = 0.0
 	report = []
-	for schema_identifier, path in cerializer.utils.iterate_over_schemata():
-		print(f'Benchmarking schema {schema_identifier}.')
+	report_json = []
+	for schema_identifier, path in tqdm.tqdm(list(cerializer.utils.iterate_over_schemata()), desc = 'Benchmarking'):
 		setup = f'''
 import cerializer.tests.dev_utils as t
 import cerializer.tests.benchmark as b
@@ -43,6 +44,8 @@ import cerializer.cerializer
 import fastavro
 import os
 import io
+import json
+
 
 from __main__ import schemata as CERIALIZER_SCHEMATA
 
@@ -55,13 +58,11 @@ cerializer_codec = cerializer.cerializer.Cerializer(
 	namespace = schema_identifier.split('.')[0],
 	schema_name = schema_identifier.split('.')[1]
 )
-print('Loading test data.', end = " ")
 data = list(yaml.unsafe_load_all(open(os.path.join('{path}', 'example.yaml'))))[0]  # type: ignore
 SCHEMA_FAVRO = fastavro.parse_schema(
 	yaml.load(open(os.path.join('{path}', 'schema.yaml')), Loader = yaml.Loader)
 )
 
-print(f'Preheating by serializing and deserializing {preheat_number} times.')
 for i in range({preheat_number}):
 	output_cerializer = cerializer_codec.serialize(data)
 	deserialized_data = cerializer_codec.deserialize(output_cerializer)
@@ -70,6 +71,36 @@ for i in range({preheat_number}):
 	x = output_fastavro.getvalue()
 	output_fastavro.seek(0)
 	res = fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
+
+
+import io
+import json
+import yaml
+import avro
+import avro.schema
+from avro.datafile import DataFileReader, DataFileWriter
+from avro.io import DatumReader, DatumWriter
+import datetime
+schema = yaml.load(open(os.path.join('{path}', 'schema.yaml')), Loader = yaml.Loader)
+try:
+	data_avro = yaml.load(open(os.path.join('{path}', 'example_avro.yaml')), Loader = yaml.Loader)
+except:
+	data_avro = data
+parsed_schema = avro.schema.parse(json.dumps(schema))
+
+
+		'''
+
+		stmt_avro = '''
+output_avro = io.BytesIO()
+writer = avro.io.DatumWriter(parsed_schema)
+encoder = avro.io.BinaryEncoder(output_avro)
+writer.write(data_avro, encoder)
+raw_bytes = output_avro.getvalue()
+bytes_reader = io.BytesIO(raw_bytes)
+decoder = avro.io.BinaryDecoder(bytes_reader)
+reader = avro.io.DatumReader(parsed_schema)
+data_deserialized = reader.read(decoder)
 		'''
 
 		stmt_cerializer = '''
@@ -84,38 +115,60 @@ x = output_fastavro.getvalue()
 output_fastavro.seek(0)
 res = fastavro.schemaless_reader(output_fastavro, SCHEMA_FAVRO)
 		'''
+
+		stmt_json = '''
+json_encoded = json.dumps(data)
+json_decoded = json.loads(json_encoded)
+		'''
 		# we do this since we do first one half and the second half
 		half_number = int(number / 2)
-		print('Benchmarking Cerializer.', end = " ")
 		result_cerializer_1 = timeit.timeit(stmt = stmt_cerializer, setup = setup, number = half_number)
-		print('Benchmarking FastAvro.', end = " ")
 		result_fastavro_1 = timeit.timeit(stmt = stmt_fastavro, setup = setup, number = half_number)
-		print('Benchmarking FastAvro.', end = " ")
+		result_avro_1 = timeit.timeit(stmt = stmt_avro, setup = setup, number = half_number)
 		result_fastavro_2 = timeit.timeit(stmt = stmt_fastavro, setup = setup, number = half_number)
-		print('Benchmarking Cerializer.', end = " ")
+		result_avro_2 = timeit.timeit(stmt = stmt_avro, setup = setup, number = half_number)
 		result_cerializer_2 = timeit.timeit(stmt = stmt_cerializer, setup = setup, number = half_number)
+
+		data = list(yaml.unsafe_load_all(open(os.path.join(path, 'example.yaml'))))[0]
+		try:
+			import json
+			# this will fail if the data has components that are not JSON serializable such as datetime
+			serialized = json.dumps(data)
+			result_json_1 = 0 if True else timeit.timeit(stmt = stmt_json, setup = setup, number = half_number)
+			result_json_2 = 0 if True else timeit.timeit(stmt = stmt_json, setup = setup, number = half_number)
+			result_json = result_json_1 + result_json_2
+		except:
+			result_json = 0
+
 		result_cerializer = result_cerializer_1 + result_cerializer_2
 		result_fastavro = result_fastavro_1 + result_fastavro_2
-		total_cerializer += result_cerializer
-		total_fastavro += result_fastavro
+		result_avro = result_avro_1 + result_avro_2
+		maximum = max(result_cerializer, result_fastavro, result_avro)
+		max_json = max(result_cerializer, result_json)
+
+		if result_json:
+			report_json.append(
+				f'{schema_identifier.ljust(36, " ")},{result_cerializer/max_json},{result_json/max_json}'
+			)
+
 		results.append(
-			f'{schema_identifier.ljust(36, " ")}   {(result_fastavro/result_cerializer):.4f} times faster,   {result_fastavro:.4f}s : {result_cerializer:.4f}s'
+			f'{schema_identifier.ljust(36, " ")},{result_cerializer/maximum},{result_fastavro/maximum},{result_avro/maximum}'
 		)
-		print(f'Finished benchmarking {schema_identifier}.')
-		print()
 	for r in results:
-		report.append(r)  # dumb_style_checker:disable = print-statement
-	report.append(  # dumb_style_checker:disable = print-statement
-		f'AVERAGE: {(total_fastavro/total_cerializer):.4f} times faster'
-	)
+		report.append(r)
 	benchmark_header = '============================== BENCHMARK RESULTS =============================='
-	return benchmark_header + '\n' + '\n'.join(report)
+	benchmark_header_json = '=========================== BENCHMARK RESULTS JSON ============================'
+	return benchmark_header + '\n' + '\n'.join(report) + '\n' + '\n' + benchmark_header_json + '\n' + '\n'.join(report_json)
 
 
 
 if __name__ == "__main__":
 	schemata = get_schemata()
 	# args repeat_number, preheat_number
-	report = benchmark(int(sys.argv[1]), int(sys.argv[2]))
+	if len(sys.argv) < 3:
+		report = benchmark()
+	else:
+		report = benchmark(int(sys.argv[1]), int(sys.argv[2]))
 	os.system('clear')
+	os.system('export TERM=xterm')
 	print(report)

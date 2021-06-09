@@ -1,0 +1,7 @@
+name: bytes_schema
+namespace: cerializer
+type: record
+fields:
+
+  - name: whatever
+    type: bytes

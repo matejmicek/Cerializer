@@ -1,9 +1,0 @@
-name: timestamp_schema
-namespace: cerializer
-type: record
-fields:
-
-  - name: date
-    type:
-      type: "long"
-      logicalType: "timestamp-millis"

@@ -5,6 +5,8 @@ import cerializer.utils
 import cerializer.code_generator
 import cerializer.compiler
 import cerializer.cerializer_daemon
+import tqdm
+
 
 
 class CerializerSchemata:
@@ -17,7 +19,7 @@ class CerializerSchemata:
 	You can init CerializerSchemata either with list of schemata or a schema url pointing to Kafka schema repo.
 	'''
 
-	def __init__(self, schemata: List[Tuple[str, Any]] = None, schemata_url: str = None) -> None:
+	def __init__(self, schemata: List[Tuple[str, Any]] = None, schemata_url: str = None, verbose = False) -> None:
 		'''
 		Produces an instance of CerializerSchemata.
 		On init, it compiles all the schemata either from the list of schemata or the schema ulr.
@@ -27,11 +29,11 @@ class CerializerSchemata:
 		:param schemata_url: url to Kafka schema repo.
 		'''
 		self._schema_database = cerializer.utils.get_subschemata(schemata) if schemata else {}
-		print(self._schema_database)
 		self._schema_code_database = {}
 		self._schemata_url = schemata_url
 		self._cycle_starting_nodes: Set[str] = set()
 		self._init_cycles()
+		self._verbose = verbose
 		# fetching and compiling all the schemata from Kafka
 		if self._schemata_url:
 			self._cerializer_daemon = cerializer.cerializer_daemon.CerializerDaemon(self, self._schemata_url)
@@ -40,7 +42,11 @@ class CerializerSchemata:
 			# checks periodically for new schemata
 			self._cerializer_daemon.start()
 		# compiling all the code for schemata from schema list
-		for schema_identifier, schema in self._schema_database.items():
+		for schema_identifier, schema in tqdm.tqdm(
+				self._schema_database.items(),
+				desc = 'Compiling schemata',
+				disable = not self._verbose
+		):
 			code_generator = cerializer.code_generator.CodeGenerator(self, schema_identifier)
 			code = code_generator.render_code_with_wraparounds(schema)
 			compiled_code = cerializer.compiler.compile_code(code)
@@ -97,7 +103,7 @@ class CerializerSchemata:
 	) -> Union[str, List, Dict[str, Any]]:
 		'''
 		Loads the schema corresponding to the schema identifier.
-		W first check whether the schema we are looking for is not defined in the same big schema
+		We first check whether the schema we are looking for is not defined in the same big schema
 		this would mean the schema is redefined and that the local version has to be used
 		:param schema_identifier: schema identifier to look for
 		:param context_schema_identifier: in which schema are we, for redefinition purposes.

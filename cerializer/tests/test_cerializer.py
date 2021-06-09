@@ -13,7 +13,7 @@ import cerializer.schema_parser
 import cerializer.utils
 import cerializer.constants
 import cerializer.tests.dev_utils
-
+import tqdm
 
 SCHEMA_ROOTS = cerializer.constants.TEST_SCHEMATA_ROOTS
 
@@ -22,7 +22,10 @@ SCHEMA_ROOTS = cerializer.constants.TEST_SCHEMATA_ROOTS
 @pytest.fixture(scope = 'module')
 def schemata() -> cerializer.schemata.CerializerSchemata:
 	schemata = []
-	for schema_identifier, schema_root in cerializer.utils.iterate_over_schemata():
+	for schema_identifier, schema_root in tqdm.tqdm(
+			list(cerializer.utils.iterate_over_schemata()),
+			desc = 'Loading schemata'
+	):
 		if 'schemata_online' in schema_root:
 			# we do not want to add these schemata directly to Cerializer, we want it to download it by itself
 			continue

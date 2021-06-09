@@ -1,6 +1,5 @@
 def serialize({{ location }}, output):
     cdef bytearray {{ buffer_name }} = bytearray()
-    cdef dict datum
 {{ serialization_code|indent(4, True) }}
     output.write({{ buffer_name }})
 

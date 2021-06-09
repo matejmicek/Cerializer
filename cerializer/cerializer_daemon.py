@@ -23,6 +23,7 @@ class CerializerDaemon(threading.Thread):
 		:param refresh_time: Period of refreshes and fetching.
 		'''
 		super().__init__(daemon = True)
+		self._compiling = False
 		self._refresh_time = refresh_time
 		self._schema_url = schemata_url
 		self._cerializer_schemata = cerializer_schemata
@@ -48,9 +49,11 @@ class CerializerDaemon(threading.Thread):
 		Fetches all the schemata from Kafka and renders missing code if necessary.
 		:return: None
 		'''
+		print('updating with schema repo')
 		known_schemata = self._cerializer_schemata.get_known_schemata()
 		subjects = requests.get(f'{self._schema_url}/subjects').json()
 		waiting_to_be_rendered = []
+		self._compiling = True
 		for subject in subjects:
 			versions = requests.get(f'{self._schema_url}/subjects/{subject}/versions').json()
 			for version in versions:
@@ -72,7 +75,9 @@ class CerializerDaemon(threading.Thread):
 			code_generator = cerializer.code_generator.CodeGenerator(self._cerializer_schemata, schema_identifier)
 			code = code_generator.render_code_with_wraparounds(schema)
 			compiled_code = cerializer.compiler.compile_code(code)
+			print(f'finished compiling {schema_identifier}')
 			self._cerializer_schemata.add_code(schema_identifier, compiled_code)
+		self._compiling = False
 
 	def run(self) -> None:
 		'''
@@ -80,5 +85,6 @@ class CerializerDaemon(threading.Thread):
 		:return: None
 		'''
 		while not self._stop_requested.is_set():
-			self.update_with_schema_repo()
+			if not self._compiling:
+				self.update_with_schema_repo()
 			self._stop_requested.wait(self._refresh_time)

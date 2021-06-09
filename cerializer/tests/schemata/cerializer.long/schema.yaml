@@ -1,0 +1,8 @@
+name: long_
+namespace: cerializer
+type: record
+fields:
+
+
+- name: trade
+  type: long
