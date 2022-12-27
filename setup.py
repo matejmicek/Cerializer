@@ -48,7 +48,7 @@ setup(
 	install_requires = [
 		'Cython>=0.28.4,<1.0.0',
 		'PyYAML>=5.3.1,<6.0.0',
-		'setuptools>=46.0.0,<47.0.0',
+		'setuptools>=46.0.0,<66.0.0',
 		'Jinja2>=2.11.2,<3.0.0',
 		'pytz>=2020.1,<2021.0',
 		'requests>=2.25.1,<3.0.0'
