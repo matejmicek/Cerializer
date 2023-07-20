@@ -1,4 +1,3 @@
-
 *.doctree
 *.html
 *.woff2
@@ -9,3 +8,5 @@ docs/*
 .idea/
 .DS_Store
 __pycache__
+.pytest_cache
+build/

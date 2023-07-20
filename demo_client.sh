@@ -1,8 +1,6 @@
 #!/bin/sh
 
-pip install -r requirements.txt
-pip install -r dev_requirements.txt
-python setup.py build_ext --inplace
+poetry install
 
 sleep 2
 

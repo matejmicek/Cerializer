@@ -11,7 +11,7 @@ To see Cerializer in action, we can utilize three ready-made shell scripts.
 
 Prerequisites:
 - Linux or MacOS (or Windows with Windows Subsystem for Linux)
-- pip installed on the machine
+- poetry installed on the machine
 - python3 installed on the machine
 - the ROOT directory of the project opened in terminal
 

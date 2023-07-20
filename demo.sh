@@ -5,8 +5,7 @@ sleep 3
 
 echo '------- INSTALLING DEPENDENCIES ---------'
 sleep 3
-pip install -r requirements.txt
-pip install -r dev_requirements.txt
+poetry install
 python setup.py build_ext --inplace
 
 

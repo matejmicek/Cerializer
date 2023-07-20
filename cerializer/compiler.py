@@ -2,6 +2,7 @@
 import distutils.core
 import hashlib
 import importlib.machinery
+import importlib.util
 import os.path
 import sys
 from typing import Any, List
@@ -30,7 +31,11 @@ def _load_dynamic(name: str, module_path: str) -> Any:
 	:return: imported extension
 	'''
 	# mypy does not understand ExtensionFileLoader init
-	return importlib.machinery.ExtensionFileLoader(name, module_path).load_module()  # type: ignore
+	loader = importlib.machinery.ExtensionFileLoader(name, module_path)
+	spec = importlib.util.spec_from_loader(name, loader)
+	module = importlib.util.module_from_spec(spec)
+	loader.exec_module(module)
+	return module
 
 
 def _cython_inline(
